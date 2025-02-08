@@ -36,3 +36,6 @@ coverage/
 
 # Vite
 .vite/ 
+
+# python cache
+*__pycache__*
