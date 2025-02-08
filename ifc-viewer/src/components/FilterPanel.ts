@@ -14,6 +14,7 @@ export class FilterPanel {
     this.content = document.createElement("div");
     this.content.className = "filter-content";
     this.setupPanel();
+    this.setupPanelCollapseObserver();
   }
 
   private setupPanel(): void {
@@ -22,33 +23,76 @@ export class FilterPanel {
     header.innerHTML = `
       <h3>IFC Filters</h3>
       <button class="filter-toggle">
-        <i class="fas fa-filter"></i>
+        <i class="fas fa-chevron-up"></i>
       </button>
     `;
+
+    // Add toggle functionality
+    const toggleBtn = header.querySelector(
+      ".filter-toggle"
+    ) as HTMLButtonElement;
+    toggleBtn.addEventListener("click", () => {
+      this.container.classList.toggle("collapsed");
+    });
 
     this.container.appendChild(header);
     this.container.appendChild(this.content);
     document.body.appendChild(this.container);
   }
 
+  private setupPanelCollapseObserver(): void {
+    const propertiesPanel = document.querySelector(".properties-panel");
+    if (!propertiesPanel) return;
+
+    const observer = new MutationObserver(() => {
+      const isCollapsed = propertiesPanel.classList.contains("collapsed");
+      this.container.style.right = isCollapsed ? "60px" : "340px";
+    });
+
+    observer.observe(propertiesPanel, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+  }
+
   public updateFilters(): void {
-    // Clear existing filters
-    this.content.innerHTML = '';
+    console.log("[FilterPanel] Starting filter update");
+    this.content.innerHTML = "";
     this.activeFilters.clear();
 
     // Collect all unique IFC types from the loaded models
     const ifcTypes = new Set<string>();
+    console.log("[FilterPanel] Traversing models...");
+
     this.viewer.traverse((object: THREE.Object3D) => {
-      if (object.userData?.type === "element" && object.userData.ifcType) {
-        ifcTypes.add(object.userData.ifcType);
+      try {
+        console.log(`Processing object: ${object.name}`, object.userData);
+
+        if (object.userData?.type === "element") {
+          const ifcType = object.userData.ifcType;
+          console.log(`Found IFC element: ${ifcType}`);
+
+          if (ifcType) {
+            ifcTypes.add(ifcType);
+          } else {
+            console.warn("Element missing ifcType:", object);
+          }
+        }
+      } catch (error) {
+        console.error("Error processing object:", object, error);
       }
     });
 
+    console.log("Unique IFC types found:", Array.from(ifcTypes));
+
     // Create filter items for each IFC type
-    Array.from(ifcTypes).sort().forEach(className => {
-      const filterItem = this.createFilterItem(className);
-      this.content.appendChild(filterItem);
-    });
+    Array.from(ifcTypes)
+      .sort()
+      .forEach((className) => {
+        console.log(`Creating filter for: ${className}`);
+        const filterItem = this.createFilterItem(className);
+        this.content.appendChild(filterItem);
+      });
   }
 
   private createFilterItem(className: string): HTMLElement {
@@ -62,7 +106,13 @@ export class FilterPanel {
 
     const label = document.createElement("label");
     label.htmlFor = `filter-${className}`;
-    label.textContent = className.replace("IFC", "");
+
+    // Handle numeric type codes and proper IFC names
+    const displayName = className.startsWith("IFC")
+      ? className.replace("IFC", "")
+      : `Type ${className}`;
+
+    label.textContent = displayName;
 
     checkbox.addEventListener("change", () => {
       if (checkbox.checked) {
@@ -79,27 +129,38 @@ export class FilterPanel {
   }
 
   private applyFilters(): void {
-    this.viewer.traverse((object: THREE.Object3D) => {
-      // Handle regular IFC elements
-      if (object.userData?.type === "element") {
-        const ifcType = object.userData.ifcType;
-        const shouldBeVisible = !this.activeFilters.has(ifcType);
-        object.visible = shouldBeVisible;
+    console.log(
+      "[FilterPanel] Applying filters. Active filters:",
+      this.activeFilters
+    );
 
-        // Also hide any associated connection geometries
-        object.traverse((child: THREE.Object3D) => {
-          if (child.userData?.type === "connection") {
-            child.visible = shouldBeVisible;
-          }
-        });
-      }
-      // Handle standalone connection geometries
-      else if (object.userData?.type === "connection") {
-        const parentElement = object.parent;
-        if (parentElement && parentElement.userData?.type === "element") {
-          const parentType = parentElement.userData.ifcType;
-          object.visible = !this.activeFilters.has(parentType);
+    this.viewer.traverse((object: THREE.Object3D) => {
+      try {
+        // Handle regular IFC elements
+        if (object.userData?.type === "element") {
+          const ifcType = object.userData.ifcType;
+          const shouldBeVisible = !this.activeFilters.has(ifcType);
+
+          console.log(`Setting visibility for ${ifcType}: ${shouldBeVisible}`);
+          object.visible = shouldBeVisible;
+
+          // Also hide any associated connection geometries
+          object.traverse((child: THREE.Object3D) => {
+            if (child.userData?.type === "connection") {
+              child.visible = shouldBeVisible;
+            }
+          });
         }
+        // Handle standalone connection geometries
+        else if (object.userData?.type === "connection") {
+          const parentElement = object.parent;
+          if (parentElement && parentElement.userData?.type === "element") {
+            const parentType = parentElement.userData.ifcType;
+            object.visible = !this.activeFilters.has(parentType);
+          }
+        }
+      } catch (error) {
+        console.error("Error applying filters to object:", object, error);
       }
     });
   }

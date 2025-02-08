@@ -11,12 +11,14 @@ export class FastIntersectionDetector {
     this.meshes = [];
   }
 
-  public setupBoundingBoxes(model: IFCModel): void {
-    model.traverse((object) => {
-      if ((object as THREE.Mesh).isMesh) {
-        this.meshes.push(object as THREE.Mesh);
-      }
-    });
+  public setupBoundingBoxes(object: THREE.Object3D): void {
+    // Skip invisible objects
+    if (!object.visible) return;
+
+    if ((object as THREE.Mesh).isMesh) {
+      const mesh = object as THREE.Mesh;
+      this.meshes.push(mesh);
+    }
   }
 
   public async findIntersection(

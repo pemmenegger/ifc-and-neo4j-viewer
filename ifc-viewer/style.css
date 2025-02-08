@@ -344,12 +344,12 @@
 /* Properties Panel */
 .properties-panel {
   position: fixed;
-  top: 0;
-  right: 0;
-  height: 100vh;
+  right: 20px;
+  top: 20px;
+  width: 300px;
+  height: calc(100vh - 40px);
   background-color: white;
   box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-  width: 300px;
   z-index: 100;
   font-family: Arial, sans-serif;
   display: flex;
@@ -836,45 +836,134 @@
   overflow: auto;
 }
 
+/* Filter Panel */
 .filter-panel {
   position: fixed;
-  top: 50%;
-  right: 20px;
-  transform: translateY(-50%);
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  width: 200px;
-  z-index: 1000;
+  right: 340px;
+  top: 20px;
+  width: 300px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 999;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
 .filter-header {
-  padding: 0.75rem;
-  background-color: #f1f3f5;
-  border-bottom: 1px solid #e0e0e0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 14px 16px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  position: relative;
+  padding-right: 40px;
+}
+
+.filter-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d3436;
+}
+
+.filter-toggle {
+  background: #f1f3f5;
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+  color: #495057;
+  transition: all 0.2s ease;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+}
+
+.filter-toggle:hover {
+  background: #e9ecef;
+  color: #212529;
 }
 
 .filter-content {
-  padding: 1rem;
-  max-height: 400px;
+  padding: 12px 16px;
+  max-height: 70vh;
   overflow-y: auto;
 }
 
 .filter-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 10px;
+  padding: 8px 12px;
+  margin: 2px 0;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.filter-item:hover {
+  background-color: #f8f9fa;
 }
 
 .filter-item input[type="checkbox"] {
-  margin: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: #4dabf7;
+  cursor: pointer;
 }
 
 .filter-item label {
-  font-size: 0.9rem;
+  font-size: 14px;
+  color: #495057;
   cursor: pointer;
+  flex-grow: 1;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.filter-item:hover label {
+  color: #212529;
+}
+
+/* Scrollbar styling to match other panels */
+.filter-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.filter-content::-webkit-scrollbar-track {
+  background: #f1f3f5;
+  border-radius: 4px;
+}
+
+.filter-content::-webkit-scrollbar-thumb {
+  background: #ced4da;
+  border-radius: 4px;
+}
+
+.filter-content::-webkit-scrollbar-thumb:hover {
+  background: #adb5bd;
+}
+
+/* Add hover effect for collapsed state */
+.filter-panel.collapsed:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.filter-panel.collapsed {
+  height: 48px !important;
+  cursor: pointer;
+}
+
+.filter-panel.collapsed .filter-content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.filter-panel.collapsed .filter-toggle i {
+  transform: rotate(180deg);
 }

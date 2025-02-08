@@ -198,7 +198,16 @@ export class IFCViewer {
         const placedGeometries = mesh.geometries;
         const expressID = mesh.expressID;
 
-        const elementGroup = this.createElementGroup(expressID, modelID);
+        // Get the IFC type name
+        const typeCode = this.ifcAPI.GetLineType(modelID, expressID);
+        const ifcType = this.ifcAPI.GetNameFromTypeCode(typeCode);
+        console.log(`Processing element ${expressID} of type ${ifcType}`);
+
+        const elementGroup = this.createElementGroup(
+          expressID,
+          modelID,
+          ifcType
+        );
 
         for (let i = 0; i < placedGeometries.size(); i++) {
           const placedGeometry = placedGeometries.get(i) as PlacedGeometry;
@@ -283,7 +292,7 @@ export class IFCViewer {
       this.hideLoading();
     }
   }
-  
+
   private getBufferGeometry(
     modelID: number,
     placedGeometry: PlacedGeometry

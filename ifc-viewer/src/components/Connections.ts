@@ -155,9 +155,7 @@ export class Connections {
 
       // Setup detector for each model
       this.viewer.getModels().forEach((model: IFCModel) => {
-        if (this.connectionDetector) {
-          this.connectionDetector.setupBoundingBoxes(model);
-        }
+        this.setupDetectorForModel(model);
       });
 
       // Analyze connections between elements
@@ -213,27 +211,31 @@ export class Connections {
     connectionsPanel.appendChild(errorDiv);
   }
 
-  private getAllElements(): ElementInfo[] {
-    const elements: ElementInfo[] = [];
-
-    this.viewer.getModels().forEach((model: IFCModel) => {
-      model.traverse((child: THREE.Object3D) => {
-        // Check if it's an element group
-        if (child.name.startsWith("Element_") && child.userData.expressID) {
-          elements.push({
-            object: child,
-            modelID: model.modelID, // Use the model's ID
-            expressID: child.userData.expressID,
-          });
-        }
-      });
+  private getAllElements(): THREE.Object3D[] {
+    const elements: THREE.Object3D[] = [];
+    this.viewer.traverse((object: THREE.Object3D) => {
+      // Check both visibility and element type
+      if (object.visible && object.userData?.type === "element") {
+        elements.push(object);
+      }
     });
-
     return elements;
   }
 
+  private setupDetectorForModel(model: IFCModel): void {
+    model.traverse((child: THREE.Object3D) => {
+      if (
+        this.connectionDetector &&
+        child.visible &&
+        child.userData?.type === "element"
+      ) {
+        this.connectionDetector.setupBoundingBoxes(child);
+      }
+    });
+  }
+
   private async findConnections(
-    elements: ElementInfo[]
+    elements: THREE.Object3D[]
   ): Promise<Map<string, Connection>> {
     const connections = new Map<string, Connection>();
 
@@ -244,19 +246,27 @@ export class Connections {
         const element2 = elements[j];
 
         // Find intersection between the two elements
-        const intersection = await this.findIntersection(
-          element1.object,
-          element2.object
-        );
+        const intersection = await this.findIntersection(element1, element2);
 
         if (intersection) {
           // Create a unique ID for this connection
-          const connectionId = `${element1.expressID}-${element2.expressID}`;
+          const connectionId = `${element1.userData.expressID}-${element2.userData.expressID}`;
 
           // Create connection object
           const connection: Connection = {
             id: connectionId,
-            elements: [element1, element2],
+            elements: [
+              {
+                object: element1,
+                modelID: element1.userData.modelID,
+                expressID: element1.userData.expressID,
+              },
+              {
+                object: element2,
+                modelID: element2.userData.modelID,
+                expressID: element2.userData.expressID,
+              },
+            ],
             type: intersection.type,
             measurements: intersection.measurements,
             geometry: intersection.geometry,
@@ -268,8 +278,8 @@ export class Connections {
 
           // Update element-connection mappings
           this.updateElementConnections(
-            element1.expressID,
-            element2.expressID,
+            element1.userData.expressID,
+            element2.userData.expressID,
             connectionId
           );
         }
@@ -1139,7 +1149,7 @@ export class Connections {
     btn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
     btn.style.cursor = "pointer";
     btn.addEventListener("click", () => {
-        this.takeSnapshot();
+      this.takeSnapshot();
     });
     container.appendChild(btn);
   }
@@ -1160,16 +1170,16 @@ export class Connections {
 
     const mainRenderer = this.viewer.getRenderer();
     const scene = this.viewer.getScene();
-    
+
     // Create a separate renderer for snapshots
-    const snapshotRenderer = new THREE.WebGLRenderer({ 
+    const snapshotRenderer = new THREE.WebGLRenderer({
       antialias: true,
-      preserveDrawingBuffer: true 
+      preserveDrawingBuffer: true,
     });
     snapshotRenderer.setPixelRatio(window.devicePixelRatio);
-    
+
     // Hide snapshot renderer's canvas
-    snapshotRenderer.domElement.style.display = 'none';
+    snapshotRenderer.domElement.style.display = "none";
     document.body.appendChild(snapshotRenderer.domElement);
 
     // Hide connection geometries for snapshot generation
@@ -1207,26 +1217,36 @@ export class Connections {
 
       // Define view directions including axonometric
       const viewDirections = [
-        new THREE.Vector3(0, 1, 0),   // Top view
-        new THREE.Vector3(0, 0, 1),   // Front view
-        new THREE.Vector3(1, 0, 0),   // Side view
-        new THREE.Vector3(1, 1, 1).normalize(),  // Axonometric view
+        new THREE.Vector3(0, 1, 0), // Top view
+        new THREE.Vector3(0, 0, 1), // Front view
+        new THREE.Vector3(1, 0, 0), // Side view
+        new THREE.Vector3(1, 1, 1).normalize(), // Axonometric view
       ];
 
-      const viewLabels = ["Top View", "Front View", "Side View", "Axonometric View"];
+      const viewLabels = [
+        "Top View",
+        "Front View",
+        "Side View",
+        "Axonometric View",
+      ];
 
       // Take snapshots from different angles
       const snapshots: string[] = [];
-      
+
       for (const direction of viewDirections) {
         const orthoCamera = new THREE.OrthographicCamera(
-          left, right, top, bottom, near, far
+          left,
+          right,
+          top,
+          bottom,
+          near,
+          far
         );
-        
+
         // Position camera
-        orthoCamera.position.copy(center).add(
-          direction.multiplyScalar(offsetDistance)
-        );
+        orthoCamera.position
+          .copy(center)
+          .add(direction.multiplyScalar(offsetDistance));
         orthoCamera.lookAt(center);
         orthoCamera.up.set(0, 1, 0);
         orthoCamera.updateProjectionMatrix();
@@ -1234,20 +1254,24 @@ export class Connections {
         // Set renderer size and take snapshot
         snapshotRenderer.setSize(snapshotWidth, snapshotHeight);
         snapshotRenderer.render(scene, orthoCamera);
-        const dataURL = snapshotRenderer.domElement.toDataURL("image/jpeg", 1.0);
+        const dataURL = snapshotRenderer.domElement.toDataURL(
+          "image/jpeg",
+          1.0
+        );
         snapshots.push(dataURL);
       }
 
       // Constants for padding and spacing
       const imagePadding = 20; // Padding between images
       const labelHeight = 40; // Height reserved for labels
-      
+
       // Create composite image for panel view (vertical)
       const compositeCanvas = document.createElement("canvas");
-      compositeCanvas.width = snapshotWidth + (imagePadding * 2); // Add padding on sides
-      compositeCanvas.height = (snapshotHeight + imagePadding) * snapshots.length + imagePadding; // Add padding between images
+      compositeCanvas.width = snapshotWidth + imagePadding * 2; // Add padding on sides
+      compositeCanvas.height =
+        (snapshotHeight + imagePadding) * snapshots.length + imagePadding; // Add padding between images
       const ctx = compositeCanvas.getContext("2d");
-      
+
       if (!ctx) {
         throw new Error("Failed to get canvas context");
       }
@@ -1264,7 +1288,7 @@ export class Connections {
         ctx.fillStyle = "#000000";
         ctx.textAlign = "left";
         ctx.fillText(viewLabels[i], imagePadding + 10, y + 25);
-        
+
         // Draw snapshot
         const img = await new Promise<HTMLImageElement>((resolve, reject) => {
           const image = new Image();
@@ -1272,17 +1296,24 @@ export class Connections {
           image.onerror = reject;
           image.src = snapshots[i];
         });
-        
-        ctx.drawImage(img, imagePadding, y + labelHeight, snapshotWidth, snapshotHeight - labelHeight);
+
+        ctx.drawImage(
+          img,
+          imagePadding,
+          y + labelHeight,
+          snapshotWidth,
+          snapshotHeight - labelHeight
+        );
         y += snapshotHeight + imagePadding; // Add padding after each image
       }
 
       // Create horizontal composite for enlarged view
       const enlargedCanvas = document.createElement("canvas");
-      enlargedCanvas.width = (snapshotWidth + imagePadding) * snapshots.length + imagePadding; // Add padding between and around images
-      enlargedCanvas.height = snapshotHeight + (imagePadding * 2); // Add padding top and bottom
+      enlargedCanvas.width =
+        (snapshotWidth + imagePadding) * snapshots.length + imagePadding; // Add padding between and around images
+      enlargedCanvas.height = snapshotHeight + imagePadding * 2; // Add padding top and bottom
       const enlargedCtx = enlargedCanvas.getContext("2d");
-      
+
       if (!enlargedCtx) {
         throw new Error("Failed to get enlarged canvas context");
       }
@@ -1298,8 +1329,12 @@ export class Connections {
         enlargedCtx.font = "bold 20px Arial";
         enlargedCtx.fillStyle = "#000000";
         enlargedCtx.textAlign = "center";
-        enlargedCtx.fillText(viewLabels[i], x + snapshotWidth/2, imagePadding + 25);
-        
+        enlargedCtx.fillText(
+          viewLabels[i],
+          x + snapshotWidth / 2,
+          imagePadding + 25
+        );
+
         // Draw snapshot
         const img = await new Promise<HTMLImageElement>((resolve, reject) => {
           const image = new Image();
@@ -1307,28 +1342,42 @@ export class Connections {
           image.onerror = reject;
           image.src = snapshots[i];
         });
-        
-        enlargedCtx.drawImage(img, x, imagePadding + labelHeight, snapshotWidth, snapshotHeight - labelHeight);
+
+        enlargedCtx.drawImage(
+          img,
+          x,
+          imagePadding + labelHeight,
+          snapshotWidth,
+          snapshotHeight - labelHeight
+        );
         x += snapshotWidth + imagePadding; // Add padding after each image
       }
 
       // Get data URLs for both layouts
-      const verticalCompositeDataURL = compositeCanvas.toDataURL("image/jpeg", 1.0);
-      const horizontalCompositeDataURL = enlargedCanvas.toDataURL("image/jpeg", 1.0);
+      const verticalCompositeDataURL = compositeCanvas.toDataURL(
+        "image/jpeg",
+        1.0
+      );
+      const horizontalCompositeDataURL = enlargedCanvas.toDataURL(
+        "image/jpeg",
+        1.0
+      );
 
       // Show the vertical composite in the panel, but use horizontal for enlarged view
-      this.snapshotPanel.show(verticalCompositeDataURL, horizontalCompositeDataURL);
-
+      this.snapshotPanel.show(
+        verticalCompositeDataURL,
+        horizontalCompositeDataURL
+      );
     } finally {
       // Restore connection geometries visibility
       connectionObjects.forEach((obj, idx) => {
         obj.visible = originalVisibility[idx];
       });
-      
+
       // Clean up snapshot renderer
       document.body.removeChild(snapshotRenderer.domElement);
       snapshotRenderer.dispose();
-      
+
       // Force render with main renderer to restore view
       mainRenderer.render(scene, this.viewer.getCamera());
     }

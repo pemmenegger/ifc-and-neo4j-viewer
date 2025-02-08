@@ -51,7 +51,10 @@ declare module "web-ifc/web-ifc-api" {
       callback: (mesh: import("web-ifc").IFCMeshData) => void
     ): void;
     CloseModel(modelID: number): void;
-    GetLine(modelID: number, expressID: number): {
+    GetLine(
+      modelID: number,
+      expressID: number
+    ): {
       type: string;
       [key: string]: any;
     };
