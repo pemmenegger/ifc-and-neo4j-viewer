@@ -24,7 +24,7 @@ def render_page_and_save(keyword, page, page_num):
     pix = page.get_pixmap(matrix=mat)
 
     # Save the image to the specified path
-    image_name = "page_" + str(page_num) + "_" + keyword + ".png"
+    image_name = "page_" + str(page_num) + "_name_" + keyword + ".png"
     image_path = os.path.join(PATH_TO_SAVE_IMAGES, image_name)
     pix.save(image_path)
 
