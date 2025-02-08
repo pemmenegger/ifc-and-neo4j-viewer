@@ -1,4 +1,5 @@
-from pdf_analysis import generate_image
+from pdf_analysis import generate_image, PATH_TO_SAVE_IMAGES
+from upload import upload_images
 import pandas as pd
 
 EXTRACTED_IFC = "extracted_ifc.csv"
@@ -20,7 +21,10 @@ def main():
                 if ~results:
                     continue
                 list_of_element_types.append(element)
+    # upload images
+    upload_images(PATH_TO_SAVE_IMAGES)
 
 
 if __name__ == "__main__":
     main()
+    print("---DONE---")

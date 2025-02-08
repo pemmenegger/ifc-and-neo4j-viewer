@@ -12,7 +12,7 @@ def get_page(keyword):
         text = page.get_text()
         if keyword in text:
             return [page, (page_num + 1)]
-    print(f'element "{keyword}" not found in catalog!')
+    # print(f'element "{keyword}" not found in catalog!')
     return []
 
 
