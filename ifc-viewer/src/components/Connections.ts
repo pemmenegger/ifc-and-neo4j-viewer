@@ -5,6 +5,7 @@ import {
   IntersectionVisualizer,
 } from "../connection-utils";
 import { IFCModel, IntersectionResult } from "../types";
+import { SnapshotPanel } from "./SnapshotPanel";
 
 interface ElementInfo {
   object: THREE.Object3D;
@@ -47,6 +48,8 @@ export class Connections {
   private connectionVisualizations: Map<string, ConnectionVisualization>;
   private connectionData: ConnectionData | null = null;
   private scene: THREE.Scene;
+  private currentConnectionBbox: THREE.Box3 | null = null;
+  private snapshotPanel: SnapshotPanel;
 
   constructor(viewer: IFCViewer) {
     this.viewer = viewer;
@@ -54,6 +57,7 @@ export class Connections {
     this.elementConnections = new Map();
     this.connectionVisualizations = new Map();
     this.scene = viewer.getScene();
+    this.snapshotPanel = new SnapshotPanel(this.viewer);
 
     // Setup deselection handler
     this.setupDeselection();
@@ -478,6 +482,9 @@ export class Connections {
         sectionBtn.classList.remove("active");
       }
     });
+
+    this.removeSnapshotButton();
+    this.currentConnectionBbox = null;
   }
 
   // Add this method to handle toolbar interactions
@@ -849,7 +856,7 @@ export class Connections {
     content.appendChild(item);
   }
 
-  private createSectionBoxForConnection(connection: Connection): void {
+  public createSectionBoxForConnection(connection: Connection): void {
     console.log("Creating section box for connection:", connection.id);
     const visualization = this.connectionVisualizations.get(connection.id);
 
@@ -860,9 +867,6 @@ export class Connections {
 
     // Create bounding box for the connection
     const bbox = new THREE.Box3();
-    console.log("Initial bbox:", bbox);
-
-    // Add visualization geometry to bbox
     if (visualization.points) {
       console.log("Adding points to section bbox");
       visualization.points.children.forEach((sphere: THREE.Object3D) => {
@@ -889,6 +893,11 @@ export class Connections {
     // Create section box
     console.log("Setting section box");
     this.viewer.setSectionBox(bbox);
+
+    // Store the current bounding box for snapshot cropping
+    this.currentConnectionBbox = bbox;
+    // Add snapshot button overlay on canvas
+    this.addSnapshotButton();
   }
 
   private zoomToConnection(connection: Connection): void {
@@ -1111,5 +1120,273 @@ export class Connections {
         this.connectionVisualizer?.unhighlight(vis);
       });
     }
+  }
+
+  private addSnapshotButton(): void {
+    const container = this.viewer.getContainer();
+    if (container.querySelector("#snapshot-btn")) return;
+    const btn = document.createElement("button");
+    btn.id = "snapshot-btn";
+    btn.innerText = "Snapshot";
+    btn.style.position = "absolute";
+    btn.style.top = "10px";
+    btn.style.right = "10px";
+    btn.style.zIndex = "1000";
+    btn.style.padding = "8px 12px";
+    btn.addEventListener("click", () => {
+      this.takeSnapshot();
+    });
+    container.appendChild(btn);
+  }
+
+  private removeSnapshotButton(): void {
+    const container = this.viewer.getContainer();
+    const btn = container.querySelector("#snapshot-btn");
+    if (btn) {
+      container.removeChild(btn);
+    }
+  }
+
+  private async takeSnapshot(): Promise<void> {
+    if (!this.currentConnectionBbox) {
+      alert("No connection bounding box active.");
+      return;
+    }
+
+    const renderer = this.viewer.getRenderer();
+    const scene = this.viewer.getScene();
+
+    // Compute center and size of the section box
+    const bbox = this.currentConnectionBbox;
+    const center = bbox.getCenter(new THREE.Vector3());
+    const size = bbox.getSize(new THREE.Vector3());
+
+    // Determine face areas for an axis-aligned box
+    const areaX = size.y * size.z; // faces perpendicular to X
+    const areaY = size.x * size.z; // faces perpendicular to Y
+    const areaZ = size.x * size.y; // faces perpendicular to Z
+
+    // Choose the face with the maximum area and set the corresponding normal and face dimensions
+    let primaryNormal = new THREE.Vector3();
+    let faceWidth = 0,
+      faceHeight = 0;
+    if (areaZ >= areaX && areaZ >= areaY) {
+      primaryNormal.set(0, 0, 1);
+      faceWidth = size.x;
+      faceHeight = size.y;
+    } else if (areaX >= areaY) {
+      primaryNormal.set(1, 0, 0);
+      faceWidth = size.y;
+      faceHeight = size.z;
+    } else {
+      primaryNormal.set(0, 1, 0);
+      faceWidth = size.x;
+      faceHeight = size.z;
+    }
+
+    // Set orthographic camera parameters
+    const left = -faceWidth / 2;
+    const right = faceWidth / 2;
+    const top = faceHeight / 2;
+    const bottom = -faceHeight / 2;
+    const near = 0.1;
+    const far = 1000; // sufficiently large
+    const offsetDistance = size.length();
+
+    // Choose rotation axis for additional views. If primaryNormal is almost vertical, use (1,0,0); otherwise use up vector (0,1,0).
+    let rotationAxis = new THREE.Vector3(0, 1, 0);
+    if (Math.abs(primaryNormal.dot(rotationAxis)) > 0.9) {
+      rotationAxis.set(1, 0, 0);
+    }
+
+    // Compute two additional normals by rotating the primary normal by ±90° around the chosen axis
+    const normal2 = primaryNormal
+      .clone()
+      .applyAxisAngle(rotationAxis, Math.PI / 2);
+    const normal3 = primaryNormal
+      .clone()
+      .applyAxisAngle(rotationAxis, -Math.PI / 2);
+
+    const viewNormals = [primaryNormal, normal2, normal3];
+
+    // Set desired snapshot resolution for each view while preserving aspect ratio
+    const snapshotHeight = 600; // increased height in pixels for larger snapshot
+    const snapshotWidth = snapshotHeight * (faceWidth / faceHeight);
+
+    // Save the current renderer size
+    const originalSize = new THREE.Vector2();
+    renderer.getSize(originalSize);
+
+    // Array to hold snapshot data URLs
+    const snapshots: string[] = [];
+
+    // Render each view
+    for (const n of viewNormals) {
+      const orthoCamera = new THREE.OrthographicCamera(
+        left,
+        right,
+        top,
+        bottom,
+        near,
+        far
+      );
+      // Position camera so that it is offset from the center by the normal multiplied by offsetDistance
+      orthoCamera.position.copy(
+        center.clone().add(n.clone().multiplyScalar(offsetDistance))
+      );
+      orthoCamera.lookAt(center);
+      orthoCamera.up.set(0, 1, 0);
+      orthoCamera.updateProjectionMatrix();
+
+      // Set renderer to the snapshot resolution for this view
+      renderer.setSize(snapshotWidth, snapshotHeight);
+
+      // Render scene from this viewpoint
+      renderer.render(scene, orthoCamera);
+
+      // Capture the snapshot as a JPEG image dataURL
+      const dataURL = renderer.domElement.toDataURL("image/jpeg", 1.0);
+      snapshots.push(dataURL);
+    }
+
+    // Restore the original renderer size
+    renderer.setSize(originalSize.x, originalSize.y);
+
+    // Define labels for vertical composite (onscreen view)
+    const labels = ["Primary View", "Side View (+90°)", "Side View (-90°)"];
+    const labelHeight = 30; // height in pixels for each label
+
+    // Create vertical composite image for onscreen snapshot
+    const compositeCanvas = document.createElement("canvas");
+    compositeCanvas.width = snapshotWidth;
+    compositeCanvas.height = (snapshotHeight + labelHeight) * snapshots.length;
+    const ctx = compositeCanvas.getContext("2d");
+    if (!ctx) {
+      console.error("Failed to get canvas context");
+      return;
+    }
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, compositeCanvas.width, compositeCanvas.height);
+
+    const loadImage = (src: string): Promise<HTMLImageElement> => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    };
+
+    let y = 0;
+    for (let i = 0; i < snapshots.length; i++) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, y, compositeCanvas.width, labelHeight);
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillStyle = "black";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(labels[i], compositeCanvas.width / 2, y + labelHeight / 2);
+      y += labelHeight;
+
+      try {
+        const img = await loadImage(snapshots[i]);
+        ctx.drawImage(img, 0, y, snapshotWidth, snapshotHeight);
+      } catch (error) {
+        console.error("Error loading snapshot image:", error);
+      }
+      y += snapshotHeight;
+    }
+
+    const verticalCompositeDataURL = compositeCanvas.toDataURL(
+      "image/jpeg",
+      1.0
+    );
+    console.log(
+      "Vertical composite snapshot dataURL:",
+      verticalCompositeDataURL.slice(0, 50) + "..."
+    );
+
+    // Generate horizontal composite snapshots using fixed camera directions
+    const horizontalViewNormals = [
+      new THREE.Vector3(0, 1, 0), // Top view
+      new THREE.Vector3(1, 0, 0), // Side 1 view
+      new THREE.Vector3(0, 0, 1), // Side 2 view
+    ];
+    const horizontalSnapshots: string[] = [];
+    for (const normal of horizontalViewNormals) {
+      const orthoCamera = new THREE.OrthographicCamera(
+        left,
+        right,
+        top,
+        bottom,
+        near,
+        far
+      );
+      orthoCamera.position.copy(
+        center.clone().add(normal.clone().multiplyScalar(offsetDistance))
+      );
+      orthoCamera.lookAt(center);
+      orthoCamera.up.set(0, 1, 0);
+      orthoCamera.updateProjectionMatrix();
+      renderer.setSize(snapshotWidth, snapshotHeight);
+      renderer.render(scene, orthoCamera);
+      const dataURL = renderer.domElement.toDataURL("image/jpeg", 1.0);
+      horizontalSnapshots.push(dataURL);
+    }
+
+    // Create horizontal composite image for enlarged view from horizontalSnapshots
+    const horizontalCanvas = document.createElement("canvas");
+    horizontalCanvas.width = snapshotWidth * horizontalSnapshots.length;
+    horizontalCanvas.height = snapshotHeight + labelHeight;
+    const hctx = horizontalCanvas.getContext("2d");
+    if (!hctx) {
+      console.error("Failed to get canvas context for horizontal composite");
+      return;
+    }
+    hctx.fillStyle = "#ffffff";
+    hctx.fillRect(0, 0, horizontalCanvas.width, horizontalCanvas.height);
+    const horizontalLabels = ["Top", "Side 1", "Side 2"];
+    for (let i = 0; i < horizontalSnapshots.length; i++) {
+      hctx.fillStyle = "#ffffff";
+      hctx.fillRect(i * snapshotWidth, 0, snapshotWidth, labelHeight);
+      hctx.font = "bold 20px sans-serif";
+      hctx.fillStyle = "black";
+      hctx.textAlign = "center";
+      hctx.textBaseline = "middle";
+      hctx.fillText(
+        horizontalLabels[i],
+        i * snapshotWidth + snapshotWidth / 2,
+        labelHeight / 2
+      );
+      try {
+        const img = await loadImage(horizontalSnapshots[i]);
+        hctx.drawImage(
+          img,
+          i * snapshotWidth,
+          labelHeight,
+          snapshotWidth,
+          snapshotHeight
+        );
+      } catch (error) {
+        console.error(
+          "Error loading snapshot image for horizontal composite:",
+          error
+        );
+      }
+    }
+    const horizontalCompositeDataURL = horizontalCanvas.toDataURL(
+      "image/jpeg",
+      1.0
+    );
+    console.log(
+      "Horizontal composite snapshot dataURL:",
+      horizontalCompositeDataURL.slice(0, 50) + "..."
+    );
+
+    // Display vertical composite onscreen and use horizontal composite for enlarged view
+    this.snapshotPanel.show(
+      verticalCompositeDataURL,
+      horizontalCompositeDataURL
+    );
   }
 }

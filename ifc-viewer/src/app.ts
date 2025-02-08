@@ -48,7 +48,10 @@ export class IFCViewer {
       0.1,
       1000
     );
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      preserveDrawingBuffer: true,
+    });
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
