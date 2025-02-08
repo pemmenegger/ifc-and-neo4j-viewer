@@ -1,0 +1,387 @@
+--- Page 1 ---
+25.03.2024
+Elementproduktion Neubau MFH Steiger Kriens
+Ansprechpartner
+Bauteilkatalog
+Projekt
+Besteller
+Architektur
+VORABZUG
+schaerholzbau
+
+
+--- Page 2 ---
+TN =  ±0.00
+TG =  -0.80
+Fugen Unterlagsboden
+hellblau = bauseitige Leistung*
+Legende
+Frage
+DET 105
+Bemerkungen und Angaben in einzelnen Zeichnungen gelten sinngemäss für das gesamte Dokument
+Frage
+Frage
+Fragen Besteller / Architekt
+Fragen Fachplaner
+Fragen / Hinweise Allgemein
+Neu
+Abbruch
+Bestand
+Achse
+Fassadenbahn
+Abdichtung / Luftdichtigkeitsschicht
+Verleimung Holz / Verbindung Beton
+Beschriftung
+Beschriftung Detail
+Brettschichtholz / Träger
+Konstruktionsholz / Vollholz
+Massivholz Eiche / Esche
+Massivholz Lärche / Douglasie
+Mineralische Dämmung 
+Wärmedämmung Polystyrol
+Spundschalung / Fassadenschalung Fi/Ta
+Weichfaserplatte
+Dreischichtplatte
+OSB
+MDF
+Holzwollplatte / Heradesign
+Gipsfaserplatte
+Vollkernplatte
+Sperrholz / Kerto
+Duripanel
+Splittschüttung 
+Metall
+Unterlagsboden
+Beton / Mörtelbett (Faktor 0.5)
+Backstein
+Kalksandstein
+Terrain
+Verputz
+Plattenbelag
+Tür
+Schrank
+*Bauseitige Leistungen sind: 
+­ schematisch und informell
+­ durch den jeweiligen Fachplaner bzw. den Architekten zu planen 
+­ nicht auf bauphysikalische Anforderungen oder Eigenschaften geprüft
+­ nicht im Leistungsumfang von schaerholzbau enthalten
+TN = Höhe Terrain neu
+TG = Höhe Terrain gewachsen
+Bemerkungen 
+Folie Fenster durch schaerholzbau
+Verklebung Fenster durch Fensterbauer
+Abdichtung Fenster durch Fensterbauer
+Verklebung Fenster durch schaerholzbau
+Hinterlüftung
+Insektenschutz
+schaerholzbau
+
+
+--- Page 3 ---
+Bauteilaufbau
+-
+Fassadenschalung vertikal Tanne
+21mm
+sichtbar befestigt mit Linsenkopfnägel Inox
+-
+Lattenrost horizontal
+30mm
+-
+Lattenrost vertikal
+20mm
+-
+Fassadenbahn
+-
+Gipsfaserplatte
+15mm
+-
+Konstruktionsholz
+320mm
+-
+Wärmedämmung Mineralwolle
+320mm
+-
+OSB / Luftdichtigskeitschicht
+22mm
+-
+Metallständerwand
+50mm
+-
+Gipskarton 2 x 12.5mm gespachtelt und gestrichen
+25mm
+Gesamtaufbau
+503mm
+aussen
+innen
+Installationsebene
+21 30 20 15
+320
+22 50
+25
+97
+335
+71
+503
+BTA AW 01
+Besteller
+Projekt
+6147 Altbüron
+schaerholzbau ag
+Kreuzmatte 1
+schaerholzbau
+Vorprojekt
+Msst
+Format
+± 0.00
+Datei
+VORABZUG
+Architektur
+www.schaerholzbau.ch
+Aussenwand AW 1.1
+Elementproduktion Neubau MFH Steiger Kriens
+
+
+--- Page 4 ---
+-
+Gipskarton 2 x 12.5mm gespachtelt und gestrichen
+25 mm
+-
+Metallständerwand mit 40mm Dämmung
+50mm
+-
+Hohlraum
+25mm
+-
+Metallständerwand mit 40mm Dämmung 
+50mm
+-
+Gipskarton 2 x 12.5mm gespachtelt und gestrichen
+25mm
+Gesamtaufbau
+175mm
+Bauteilaufbau
+175
+25
+50
+25
+50
+25
+25
+125
+25
+Schulzimmer
+Korridor
+BTA IW 01 Innenwand IW 3.1
+Besteller
+Projekt
+6147 Altbüron
+schaerholzbau ag
+Kreuzmatte 1
+schaerholzbau
+Vorprojekt
+Msst
+Format
+± 0.00
+Datei
+VORABZUG
+Architektur
+www.schaerholzbau.ch
+Elementproduktion Neubau MFH Steiger Kriens
+
+
+--- Page 5 ---
+-
+Linoleum 
+3mm
+-
+Unterlagsboden Anhydrit
+60mm
+-
+Trennlage
+-
+Trittschalldämmung Mineralfaser
+30mm
+-
+Gebundene Splittschüttung 4-8mm
+85mm
+-
+Dreischichtplatte Fichte, statisch verleimt
+27mm
+-
+Konstruktionsholz
+160mm
+-
+Hohlraumdämmung Mineralfaser >26kg, >1000°
+160mm
+-
+Lattenrost
+40mm
+-
+Akustikvlies
+-
+Akustiktäfer 12x80mm
+12mm
+Abstand 20mm
+Gesamtaufbau
+417mm
+Bauteilaufbau
+Installationsebene
+REI60
+52
+272
+93
+417
+12 40
+160
+27
+85
+30
+60 3
+Erdgeschoss
+Obergeschoss
+nach Ang.
+Ingenieur
+BTA DE 01
+Besteller
+Projekt
+6147 Altbüron
+schaerholzbau ag
+Kreuzmatte 1
+schaerholzbau
+Vorprojekt
+Msst
+Format
+± 0.00
+Datei
+VORABZUG
+Architektur
+www.schaerholzbau.ch
+Geschossdecke über EG
+Elementproduktion Neubau MFH Steiger Kriens
+
+
+--- Page 6 ---
+-
+Extensive Begrünung/Vegetationsschicht/Kiesstreifen bei Dachrand
+90mm
+-
+Enka Drain
+20mm
+-
+Feuchtigkeitsabdichtung bituminös 2-lagig
+10mm
+-
+Wärmedämmung PUR (0.024W/mK)
+80mm
+-
+Dampfbremse bituminös
+10mm
+-
+Spundschalung
+22mm
+-
+Konstruktionsholz
+240mm
+-
+Wärmedämmung Zellulosefaser mit Akustikdämmung
+240mm
+-
+OSB-Platte
+22mm
+-
+Lattenrost 
+40mm
+-
+Akustikvlies
+-
+Akustiktäfer 20x80mm
+12mm
+Abstand 20mm
+Gesamtaufbau
+546mm
+Hinweis: Dachaufbau ist bauphysikalisch zu prüfen
+Bauteilaufbau
+210
+284
+52
+546
+90
+20 10 80 10 22
+240
+22 40 12
+innen
+aussen
+BRA DA 01 Dachaufbau DA 9.1
+Besteller
+Projekt
+6147 Altbüron
+schaerholzbau ag
+Kreuzmatte 1
+schaerholzbau
+Vorprojekt
+Msst
+Format
+± 0.00
+Datei
+VORABZUG
+Architektur
+www.schaerholzbau.ch
+Elementproduktion Neubau MFH Steiger Kriens
+
+
+--- Page 7 ---
+5.0°
+21
+135
+244
+Verklebung durch Fensterbauer
+Verklebung durch schaerholzbau
+Folie durch schaerholzbau
+Abdichtung durch Fensterbauer
+Technik Konvektor
+503
+86
+320
+97
+21
+30
+20
+15
+320
+22
+50
+25
+20
+Erdgeschoss
+Obergeschoss
+700
+417
+52
+272
+93
+12 40
+160
+27
+85
+30
+60 3
+REI60
+Absturzsicherung
+DET Nr 1
+Besteller
+Projekt
+6147 Altbüron
+schaerholzbau ag
+Kreuzmatte 1
+schaerholzbau
+Vorprojekt
+Msst
+Format
+± 0.00
+Datei
+VORABZUG
+Architektur
+www.schaerholzbau.ch
+Elementproduktion Neubau MFH Steiger Kriens
+
+
