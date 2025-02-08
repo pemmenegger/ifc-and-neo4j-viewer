@@ -33,6 +33,9 @@ export class IFCViewer {
   private floatingMenu: FloatingMenu;
   private sidebar: Sidebar;
   private filterPanel: FilterPanel;
+  private pdfImagePaths: string[];
+  private pdfPreviewWindow: HTMLDivElement;
+  private lastHoveredModel: IFCModel | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -72,6 +75,19 @@ export class IFCViewer {
     this.sidebar = new Sidebar(this);
     this.spatialTree = new SpatialTree(this);
     this.filterPanel = new FilterPanel(this);
+
+    // Initialize PDF preview window and PNG image paths.
+    this.pdfImagePaths = ["/page_4_name_IW 3.1.png", "/page_3_name_AW 1.1.png"];
+    this.pdfPreviewWindow = document.createElement("div");
+    this.pdfPreviewWindow.style.position = "absolute";
+    this.pdfPreviewWindow.style.background = "rgba(255, 255, 255, 0.9)";
+    this.pdfPreviewWindow.style.border = "1px solid #ccc";
+    this.pdfPreviewWindow.style.padding = "10px";
+    this.pdfPreviewWindow.style.display = "none";
+    this.pdfPreviewWindow.style.zIndex = "1000";
+    this.pdfPreviewWindow.style.maxWidth = "200px";
+    this.pdfPreviewWindow.style.boxShadow = "2px 2px 6px rgba(0,0,0,0.3)";
+    this.container.appendChild(this.pdfPreviewWindow);
 
     // Start initialization
     this.init();
@@ -190,6 +206,7 @@ export class IFCViewer {
       const model = new THREE.Group() as IFCModel;
       model.name = file.name;
       model.modelID = modelID;
+      model.userData.viewerModel = true;
 
       let elementCount = 0;
       let geometryCount = 0;
@@ -435,6 +452,31 @@ export class IFCViewer {
         : '<i class="fas fa-eye-slash"></i>';
     });
 
+    // PDF Upload button
+    const pdfUploadBtn = document.createElement("button");
+    pdfUploadBtn.className = "model-control-btn";
+    pdfUploadBtn.innerHTML = '<i class="fas fa-file-pdf"></i>';
+    pdfUploadBtn.title = "Upload PDF";
+    pdfUploadBtn.addEventListener("click", () => {
+      pdfInput.click();
+    });
+
+    // Hidden PDF input for uploading PDFs
+    const pdfInput = document.createElement("input");
+    pdfInput.type = "file";
+    pdfInput.accept = "application/pdf";
+    pdfInput.style.display = "none";
+    pdfInput.addEventListener("change", (event: Event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) {
+        console.log(`PDF uploaded for model ${modelId}:`, file.name);
+        // Mark this model as having a PDF loaded and store a single random preview image.
+        model.userData.hasPDF = true;
+        model.userData.pdfPreviewImage = this.getRandomPdfImage();
+        // Handle the PDF file as needed (e.g., store or display it)
+      }
+    });
+
     // Delete button
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "model-control-btn";
@@ -446,11 +488,15 @@ export class IFCViewer {
       modelItem.remove();
     });
 
+    // Append the buttons to the controls container
     modelControls.appendChild(visibilityBtn);
+    modelControls.appendChild(pdfUploadBtn);
     modelControls.appendChild(deleteBtn);
     modelHeader.appendChild(modelName);
     modelHeader.appendChild(modelControls);
     modelItem.appendChild(modelHeader);
+    // Append the hidden PDF input to the model card
+    modelItem.appendChild(pdfInput);
 
     // Model info section
     const modelInfo = document.createElement("div");
@@ -840,6 +886,34 @@ export class IFCViewer {
       intersects = intersects.concat(modelIntersects);
     });
 
+    // Check if an object is being hovered and if its model has a PDF loaded.
+    if (intersects.length > 0) {
+      const intersect = intersects[0]; // take the nearest intersect
+      const model = this.getModelFromObject(intersect.object);
+      if (model && model.userData.hasPDF) {
+        if (this.lastHoveredModel !== model) {
+          // New hover event for this model: update (cycle) the displayed image.
+          if (typeof model.userData.pdfPreviewImageIndex !== "number") {
+            model.userData.pdfPreviewImageIndex = 0;
+          } else {
+            model.userData.pdfPreviewImageIndex =
+              (model.userData.pdfPreviewImageIndex + 1) %
+              this.pdfImagePaths.length;
+          }
+          model.userData.pdfPreviewImage =
+            this.pdfImagePaths[model.userData.pdfPreviewImageIndex];
+          this.lastHoveredModel = model;
+        }
+        this.showPdfPreview(intersect, model);
+      } else {
+        this.hidePdfPreview();
+        this.lastHoveredModel = null;
+      }
+    } else {
+      this.hidePdfPreview();
+      this.lastHoveredModel = null;
+    }
+
     // Pass the event to the picker
     this.picker.handleMouseMove(event);
   }
@@ -890,6 +964,63 @@ export class IFCViewer {
 
   public getModelMap(): Map<number, IFCModel> {
     return this.models;
+  }
+
+  private getRandomPdfImage(): string {
+    const randomIndex = Math.floor(Math.random() * this.pdfImagePaths.length);
+    return this.pdfImagePaths[randomIndex];
+  }
+
+  private getModelFromObject(object: THREE.Object3D): IFCModel | null {
+    let current: THREE.Object3D | null = object;
+    while (current) {
+      if (current.userData && current.userData.viewerModel) {
+        return current as IFCModel;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
+
+  private showPdfPreview(intersect: THREE.Intersection, model: IFCModel): void {
+    if (!model.userData.hasPDF) {
+      this.hidePdfPreview();
+      return;
+    }
+    let image: string;
+    if (model.userData.pdfPreviewImage) {
+      image = model.userData.pdfPreviewImage;
+    } else {
+      image = this.getRandomPdfImage();
+      model.userData.pdfPreviewImage = image;
+    }
+    console.log("Showing PDF preview image at path:", image);
+
+    // Populate preview window content with a single PNG image.
+    this.pdfPreviewWindow.innerHTML = "";
+    const img = document.createElement("img");
+    img.src = image;
+    img.style.width = "100%";
+    img.style.height = "auto";
+    this.pdfPreviewWindow.appendChild(img);
+
+    // Compute the screen coordinates of the intersect point.
+    const pos = intersect.point.clone();
+    pos.project(this.camera); // convert to normalized device coordinates
+    const halfWidth = window.innerWidth / 2;
+    const halfHeight = window.innerHeight / 2;
+    const x = pos.x * halfWidth + halfWidth;
+    const y = -(pos.y * halfHeight) + halfHeight;
+
+    // Offset the preview window so it does not obscure the object.
+    this.pdfPreviewWindow.style.left = `${x + 10}px`;
+    this.pdfPreviewWindow.style.top = `${y - 10}px`;
+    this.pdfPreviewWindow.style.display = "block";
+  }
+
+  private hidePdfPreview(): void {
+    this.pdfPreviewWindow.style.display = "none";
+    this.lastHoveredModel = null;
   }
 }
 
