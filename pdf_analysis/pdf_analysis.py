@@ -11,11 +11,12 @@ def get_page(keyword):
         page = doc.load_page(page_num)
         text = page.get_text()
         if keyword in text:
-            return page, (page_num + 1)
-    raise ValueError(f"keyword {keyword} not found!")
+            return [page, (page_num + 1)]
+    print(f'element "{keyword}" not found in catalog!')
+    return []
 
 
-def render_page_and_save(page, page_num):
+def render_page_and_save(keyword, page, page_num):
     # Set up the transformation matrix for zooming and rotation
     mat = fitz.Matrix(1.0, 1.0).prerotate(0)
 
@@ -23,19 +24,22 @@ def render_page_and_save(page, page_num):
     pix = page.get_pixmap(matrix=mat)
 
     # Save the image to the specified path
-    image_name = "page_" + str(page_num) + ".png"
+    image_name = "page_" + str(page_num) + "_" + keyword + ".png"
     image_path = os.path.join(PATH_TO_SAVE_IMAGES, image_name)
     pix.save(image_path)
 
 
-def main():
+def generate_image(keyword):
     # scrap the pdf and return the page number with a specific keyword
-    keyword = "Aussenwand AW 1.1"
-    page, page_num = get_page(keyword)
-
+    result = get_page(keyword)
+    if result == []:
+        return False
+    page = result[0]
+    page_num = result[1]
     # render the page with the given page number
-    render_page_and_save(page, page_num)
+    render_page_and_save(keyword, page, page_num)
+    return True
 
 
 if __name__ == "__main__":
-    main()
+    generate_image("Aussenwand AW 1.1")
