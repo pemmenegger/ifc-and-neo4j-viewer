@@ -15,71 +15,76 @@ export class SnapshotPanel {
     this.panel.className = "snapshot-panel";
     Object.assign(this.panel.style, {
       position: "absolute",
-      top: "50px",
-      right: "50px",
+      top: "60px",
+      left: "370px",
       width: "300px",
-      padding: "10px",
+      padding: "8px",
       background: "rgba(0, 0, 0, 0.8)",
       border: "1px solid white",
       borderRadius: "4px",
       zIndex: "2000",
       display: "none",
       color: "white",
-      maxHeight: "calc(100vh - 60px)",
+      maxHeight: "calc(100vh - 70px)",
       overflowY: "auto",
+    });
+
+    // Create a container for the buttons at the top
+    const buttonContainer = document.createElement("div");
+    Object.assign(buttonContainer.style, {
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: "4px",
+      marginBottom: "20px",
     });
 
     // Close button
     const closeButton = document.createElement("button");
     closeButton.innerText = "Close";
     Object.assign(closeButton.style, {
-      position: "absolute",
-      top: "5px",
-      right: "5px",
       background: "red",
       color: "white",
       border: "none",
       cursor: "pointer",
       padding: "2px 6px",
       fontSize: "12px",
+      borderRadius: "2px",
     });
     closeButton.addEventListener("click", () => this.hide());
 
-    this.panel.appendChild(closeButton);
-
-    // Image element to display snapshot
-    const imgElem = document.createElement("img");
-    imgElem.id = "snapshot-image";
-    Object.assign(imgElem.style, {
-      width: "100%",
-      marginTop: "30px",
-    });
-    imgElem.addEventListener("load", () => {
-      console.log("SnapshotPanel: Image loaded successfully.");
-    });
-    this.panel.appendChild(imgElem);
-
-    // Enlarge button to open snapshot in a new window
+    // Enlarge button
     const enlargeButton = document.createElement("button");
     enlargeButton.innerText = "Enlarge";
     Object.assign(enlargeButton.style, {
-      position: "absolute",
-      bottom: "10px",
-      right: "10px",
       background: "#1a73e8",
       color: "white",
       border: "none",
       cursor: "pointer",
-      padding: "4px 8px",
+      padding: "2px 6px",
       fontSize: "12px",
-      borderRadius: "4px",
+      borderRadius: "2px",
     });
     enlargeButton.addEventListener("click", () => {
       if (this.enlargedImageSrc) {
         window.open(this.enlargedImageSrc, "_blank");
       }
     });
-    this.panel.appendChild(enlargeButton);
+
+    buttonContainer.appendChild(enlargeButton);
+    buttonContainer.appendChild(closeButton);
+    this.panel.appendChild(buttonContainer);
+
+    // Image element to display snapshot
+    const imgElem = document.createElement("img");
+    imgElem.id = "snapshot-image";
+    Object.assign(imgElem.style, {
+      width: "100%",
+      marginTop: "0", // Remove margin since we have the button container
+    });
+    imgElem.addEventListener("load", () => {
+      console.log("SnapshotPanel: Image loaded successfully.");
+    });
+    this.panel.appendChild(imgElem);
 
     this.container.appendChild(this.panel);
   }

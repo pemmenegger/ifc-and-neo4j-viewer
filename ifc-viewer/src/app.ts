@@ -8,6 +8,7 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Sidebar } from "./components/Sidebar";
 import { SpatialTree } from "./components/SpatialTree";
 import { GeometryData, IFCModel, PlacedGeometry } from "./types";
+import { FilterPanel } from "./components/FilterPanel";
 
 export class IFCViewer {
   private container: HTMLElement;
@@ -31,6 +32,7 @@ export class IFCViewer {
   private isConnectionMode: boolean = false;
   private floatingMenu: FloatingMenu;
   private sidebar: Sidebar;
+  private filterPanel: FilterPanel;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -69,6 +71,7 @@ export class IFCViewer {
     this.floatingMenu = new FloatingMenu(this);
     this.sidebar = new Sidebar(this);
     this.spatialTree = new SpatialTree(this);
+    this.filterPanel = new FilterPanel(this);
 
     // Start initialization
     this.init();
@@ -170,7 +173,6 @@ export class IFCViewer {
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
-
   public async loadIFC(file: File): Promise<void> {
     try {
       console.log("Starting to load IFC file:", file.name);
@@ -236,7 +238,6 @@ export class IFCViewer {
         model.add(elementGroup);
         elementCount++;
       });
-
       console.log(
         `Processed ${elementCount} elements with ${geometryCount} geometries`
       );
@@ -271,6 +272,8 @@ export class IFCViewer {
       this.controls.update();
 
       console.log("IFC file loaded successfully");
+
+      this.filterPanel.updateFilters();
     } catch (error) {
       console.error("Error loading IFC file:", error);
       if (error instanceof Error) {
@@ -280,7 +283,7 @@ export class IFCViewer {
       this.hideLoading();
     }
   }
-
+  
   private getBufferGeometry(
     modelID: number,
     placedGeometry: PlacedGeometry
@@ -558,13 +561,18 @@ export class IFCViewer {
     // Implement floating menu setup logic
   }
 
-  private createElementGroup(expressID: number, modelID: number): THREE.Group {
+  private createElementGroup(
+    expressID: number,
+    modelID: number,
+    ifcType: string
+  ): THREE.Group {
     const elementGroup = new THREE.Group();
     elementGroup.name = `Element_${expressID}`;
     elementGroup.userData = {
       modelID,
       expressID,
       type: "element",
+      ifcType,
     };
     return elementGroup;
   }
