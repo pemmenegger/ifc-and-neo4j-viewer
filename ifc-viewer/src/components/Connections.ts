@@ -707,20 +707,28 @@ export class Connections {
   }
 
   private async createTypeSection(
-    connectionsList: HTMLElement,
+    container: HTMLElement,
     type: string,
     connections: Connection[]
   ): Promise<void> {
-    const section = document.createElement("div");
-    section.className = "connection-type-section collapsed";
+    // Group the given connections by a primary element name using normalized names.
+    // If a name contains "hollow core slab", any trailing numbers are removed.
+    const groups = await this.groupConnectionsByElements(connections);
+    // Sort clusters alphabetically by the cluster key.
+    const sortedClusters = Array.from(groups.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
 
-    // Create section header with collapse button
-    const header = document.createElement("div");
-    header.className = "type-header";
-    header.innerHTML = `
+    const section = document.createElement("div");
+    section.className = "connection-type-section";
+
+    // Create a type header for the entire type section.
+    const typeHeader = document.createElement("div");
+    typeHeader.className = "type-header";
+    typeHeader.innerHTML = `
       <div class="type-title">
         <span class="collapse-icon">
-          <i class="fas fa-chevron-right"></i>
+          <i class="fas fa-chevron-down"></i>
         </span>
         <span class="type-icon" style="color: ${
           this.connectionVisualizer?.colors[
@@ -735,31 +743,73 @@ export class Connections {
       </div>
       <span class="type-count">${connections.length}</span>
     `;
-    section.appendChild(header);
+    section.appendChild(typeHeader);
 
-    // Create connection items container
-    const content = document.createElement("div");
-    content.className = "type-content";
-
-    // Add collapse functionality
-    header.addEventListener("click", () => {
+    // Enable collapse/expand functionality for the type header.
+    typeHeader.addEventListener("click", () => {
       section.classList.toggle("collapsed");
-      const icon = header.querySelector(".collapse-icon i");
+      const icon = typeHeader.querySelector(".collapse-icon i");
       if (icon) {
         icon.classList.toggle("fa-chevron-right");
         icon.classList.toggle("fa-chevron-down");
       }
     });
 
-    // Create items asynchronously
-    await Promise.all(
-      connections.map((connection) =>
-        this.createConnectionItem(connection, type, content)
-      )
-    );
+    const clustersContainer = document.createElement("div");
+    clustersContainer.className = "type-content";
 
-    section.appendChild(content);
-    connectionsList.appendChild(section);
+    for (const [groupKey, clusterConnections] of sortedClusters) {
+      const clusterDiv = document.createElement("div");
+      clusterDiv.className = "connection-cluster";
+
+      // Create the cluster header and apply a pastel background based on its key.
+      const clusterHeader = document.createElement("div");
+      clusterHeader.className = "cluster-header";
+      clusterHeader.textContent = `${groupKey} (${clusterConnections.length})`;
+      const bgColor = this.getClusterColor(groupKey);
+      clusterHeader.style.backgroundColor = bgColor;
+      clusterHeader.style.color = "#333"; // dark text for contrast
+      clusterHeader.style.cursor = "pointer";
+      // Improve UI with padding, margin, border radius, and a smooth transition.
+      clusterHeader.style.padding = "8px 12px";
+      clusterHeader.style.marginBottom = "4px";
+      clusterHeader.style.borderRadius = "4px";
+      clusterHeader.style.transition =
+        "background-color 0.3s ease, opacity 0.3s ease";
+      clusterHeader.addEventListener("click", () => {
+        const detailsEl = clusterDiv.querySelector(
+          ".cluster-details"
+        ) as HTMLElement;
+        if (detailsEl) {
+          detailsEl.style.display =
+            detailsEl.style.display === "none" ? "block" : "none";
+        }
+      });
+      clusterHeader.addEventListener("mouseenter", () => {
+        clusterHeader.style.opacity = "0.8";
+      });
+      clusterHeader.addEventListener("mouseleave", () => {
+        clusterHeader.style.opacity = "1";
+      });
+
+      clusterDiv.appendChild(clusterHeader);
+
+      const detailsDiv = document.createElement("div");
+      detailsDiv.className = "cluster-details";
+      detailsDiv.style.display = "block"; // start expanded
+
+      // Create connection items asynchronously for each connection in the cluster.
+      const promises = clusterConnections.map((conn) =>
+        this.createConnectionItem(conn, type, detailsDiv)
+      );
+      await Promise.all(promises);
+
+      clusterDiv.appendChild(detailsDiv);
+      clustersContainer.appendChild(clusterDiv);
+    }
+
+    section.appendChild(clustersContainer);
+    container.appendChild(section);
   }
 
   private async createConnectionItem(
@@ -1381,5 +1431,53 @@ export class Connections {
       // Force render with main renderer to restore view
       mainRenderer.render(scene, this.viewer.getCamera());
     }
+  }
+
+  // Group the given connections by a primary element name using normalized names.
+  // If a name contains "hollow core slab", any trailing numbers are removed.
+  private normalizeName(name: string): string {
+    if (name.toLowerCase().includes("hollow core slab")) {
+      // Remove any trailing numbers (with preceding whitespace)
+      return name.replace(/\s+\d+$/, "").trim();
+    }
+    return name.trim();
+  }
+
+  private async groupConnectionsByElements(
+    connections: Connection[]
+  ): Promise<Map<string, Connection[]>> {
+    const groups = new Map<string, Connection[]>();
+    for (const conn of connections) {
+      // Use the asynchronous getElementName to retrieve the proper display name.
+      const name1 = await this.getElementName(
+        conn.elements[0].modelID,
+        conn.elements[0].expressID
+      );
+      const name2 = await this.getElementName(
+        conn.elements[1].modelID,
+        conn.elements[1].expressID
+      );
+      const normName1 = this.normalizeName(name1);
+      const normName2 = this.normalizeName(name2);
+      // Use the normalized names and sort them so that the order doesn't matter.
+      const key = [normName1, normName2].sort().join(" ↔ ");
+      console.log("Group key:", key);
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)?.push(conn);
+    }
+    return groups;
+  }
+
+  // Compute a pastel color (soft tone) for a given string key.
+  private getClusterColor(key: string): string {
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    // Low saturation (50%) and high lightness (90%) gives a pastel tone.
+    return `hsl(${hue}, 50%, 90%)`;
   }
 }
