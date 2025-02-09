@@ -85,7 +85,7 @@ export class IFCViewer {
     this.pdfPreviewWindow.style.padding = "10px";
     this.pdfPreviewWindow.style.display = "none";
     this.pdfPreviewWindow.style.zIndex = "1000";
-    this.pdfPreviewWindow.style.maxWidth = "200px";
+    this.pdfPreviewWindow.style.maxWidth = "400px";
     this.pdfPreviewWindow.style.boxShadow = "2px 2px 6px rgba(0,0,0,0.3)";
     this.container.appendChild(this.pdfPreviewWindow);
 
@@ -473,6 +473,26 @@ export class IFCViewer {
         // Mark this model as having a PDF loaded and store a single random preview image.
         model.userData.hasPDF = true;
         model.userData.pdfPreviewImage = this.getRandomPdfImage();
+
+        // PDF upload confirmation message with enhanced styling
+        let confirmation = modelItem.querySelector(".pdf-upload-confirmation");
+        if (!confirmation) {
+          confirmation = document.createElement("div");
+          confirmation.className = "pdf-upload-confirmation";
+          // Styling similar to the model tree / app alerts
+          confirmation.style.marginTop = "5px";
+          confirmation.style.fontSize = "14px";
+          confirmation.style.color = "#155724";
+          confirmation.style.backgroundColor = "#d4edda";
+          confirmation.style.border = "1px solid #c3e6cb";
+          confirmation.style.borderRadius = "4px";
+          confirmation.style.padding = "4px 8px";
+          confirmation.style.maxWidth = "80%";
+          confirmation.style.margin = "5px auto";
+          modelItem.appendChild(confirmation);
+        }
+        confirmation.textContent = `PDF uploaded successfully: ${file.name}`;
+
         // Handle the PDF file as needed (e.g., store or display it)
       }
     });

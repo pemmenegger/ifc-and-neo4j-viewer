@@ -439,9 +439,8 @@ export class IntersectionVisualizer {
       const sphereSize = data.type === "point" ? 0.1 : 0.025; // Double size for point connections, half for others
       const sphereGeometry = new THREE.SphereGeometry(sphereSize, 16, 16);
 
-      // Use different colors based on connection type
-      const pointColor =
-        data.type === "point" ? this.colors.point : this.colors.surface;
+      // Revert to original colors.
+      const pointColor = data.type === "point" ? this.colors.point : this.colors.surface;
       const pointMaterial = new THREE.MeshPhongMaterial({
         color: pointColor,
         transparent: true,
@@ -993,5 +992,15 @@ export class IntersectionVisualizer {
     summary.appendChild(exportButtons);
     summary.appendChild(content);
     container.appendChild(summary);
+  }
+
+  // Compute a pastel color for a given key.
+  private getClusterColor(key: string): string {
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = key.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 50%, 90%)`;
   }
 }
