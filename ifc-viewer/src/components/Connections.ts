@@ -728,7 +728,7 @@ export class Connections {
     typeHeader.innerHTML = `
       <div class="type-title">
         <span class="collapse-icon">
-          <i class="fas fa-chevron-right"></i>
+          <i class="fas fa-chevron-down"></i>
         </span>
         <span class="type-icon" style="color: ${
           this.connectionVisualizer?.colors[
@@ -774,18 +774,22 @@ export class Connections {
       clusterHeader.style.padding = "8px 12px";
       clusterHeader.style.marginBottom = "4px";
       clusterHeader.style.borderRadius = "4px";
-      clusterHeader.style.transition = "background-color 0.3s ease, opacity 0.3s ease";
+      clusterHeader.style.transition =
+        "background-color 0.3s ease, opacity 0.3s ease";
       clusterHeader.addEventListener("click", () => {
-        const detailsEl = clusterDiv.querySelector(".cluster-details") as HTMLElement;
+        const detailsEl = clusterDiv.querySelector(
+          ".cluster-details"
+        ) as HTMLElement;
         if (detailsEl) {
-          detailsEl.style.display = detailsEl.style.display === "none" ? "block" : "none";
+          detailsEl.style.display =
+            detailsEl.style.display === "none" ? "block" : "none";
         }
       });
       clusterHeader.addEventListener("mouseenter", () => {
-         clusterHeader.style.opacity = "0.8";
+        clusterHeader.style.opacity = "0.8";
       });
       clusterHeader.addEventListener("mouseleave", () => {
-         clusterHeader.style.opacity = "1";
+        clusterHeader.style.opacity = "1";
       });
 
       clusterDiv.appendChild(clusterHeader);
@@ -1439,12 +1443,20 @@ export class Connections {
     return name.trim();
   }
 
-  private async groupConnectionsByElements(connections: Connection[]): Promise<Map<string, Connection[]>> {
+  private async groupConnectionsByElements(
+    connections: Connection[]
+  ): Promise<Map<string, Connection[]>> {
     const groups = new Map<string, Connection[]>();
     for (const conn of connections) {
       // Use the asynchronous getElementName to retrieve the proper display name.
-      const name1 = await this.getElementName(conn.elements[0].modelID, conn.elements[0].expressID);
-      const name2 = await this.getElementName(conn.elements[1].modelID, conn.elements[1].expressID);
+      const name1 = await this.getElementName(
+        conn.elements[0].modelID,
+        conn.elements[0].expressID
+      );
+      const name2 = await this.getElementName(
+        conn.elements[1].modelID,
+        conn.elements[1].expressID
+      );
       const normName1 = this.normalizeName(name1);
       const normName2 = this.normalizeName(name2);
       // Use the normalized names and sort them so that the order doesn't matter.

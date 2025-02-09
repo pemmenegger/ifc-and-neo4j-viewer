@@ -26,16 +26,36 @@ export class Sidebar {
       .models-panel {
         width: 360px !important;  /* Increased from default */
         min-width: 360px !important;
+        position: relative; /* To position the collapse button */
+        font-family: "Segoe UI", system-ui, sans-serif !important;
       }
       
       .settings-panel {
         width: 360px !important;
         min-width: 360px !important;
+        font-family: "Segoe UI", system-ui, sans-serif !important;
+      }
+      
+      .models-panel.collapsed {
+        width: 60px !important;
+        min-width: 60px !important;
       }
       
       .model-info {
         padding: 8px 12px;
         font-size: 13px;
+      }
+      
+      .sidebar-collapse-btn {
+        position: absolute;
+        top: 10px;
+        right: -25px;
+        width: 25px;
+        height: 25px;
+        border-radius: 50%;
+        border: none;
+        background: #ccc;
+        cursor: pointer;
       }
     `;
     document.head.appendChild(style);
@@ -128,12 +148,21 @@ export class Sidebar {
   }
 
   private setupModelsPanel(): void {
-    // Toggle models panel
-    const modelsPanel = document.querySelector(".models-panel");
-    const modelsToggle = document.querySelector(".models-toggle");
-    if (modelsPanel && modelsToggle) {
-      modelsToggle.addEventListener("click", () => {
-        modelsPanel.classList.toggle("collapsed");
+    // Attach collapse toggle event if an existing handle is present.
+    const modelsPanel = document.querySelector(".models-panel") as HTMLElement;
+    if (!modelsPanel) return;
+    
+    // Look for an existing collapse toggle button in the panel.
+    const collapseBtn = modelsPanel.querySelector(".sidebar-collapse-btn") as HTMLButtonElement;
+    if (collapseBtn) {
+      collapseBtn.addEventListener("click", () => {
+        if (modelsPanel.classList.contains("collapsed")) {
+          modelsPanel.classList.remove("collapsed");
+          collapseBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        } else {
+          modelsPanel.classList.add("collapsed");
+          collapseBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        }
       });
     }
   }

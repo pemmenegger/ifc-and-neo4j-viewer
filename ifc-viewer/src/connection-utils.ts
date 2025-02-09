@@ -440,7 +440,8 @@ export class IntersectionVisualizer {
       const sphereGeometry = new THREE.SphereGeometry(sphereSize, 16, 16);
 
       // Revert to original colors.
-      const pointColor = data.type === "point" ? this.colors.point : this.colors.surface;
+      const pointColor =
+        data.type === "point" ? this.colors.point : this.colors.surface;
       const pointMaterial = new THREE.MeshPhongMaterial({
         color: pointColor,
         transparent: true,
