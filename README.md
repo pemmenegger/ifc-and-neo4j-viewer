@@ -12,7 +12,6 @@
 - [Usage](#usage)
 - [Contribution](#contribution)
 - [License](#license)
-- [Acknowledgments](#acknowledgments)
 - [Standing on the Shoulders of Giants](#shoulders)
 
 ---
@@ -52,19 +51,20 @@ For effective collaboration among companies, it is crucial to delineate both phy
 - **Fabian Scheurer** – HM Hochschule München, Prof. Digitale Bautechnologie & Fabrikation.
 - **Michael Schaerschaerholzbau** – Managing Director.
 
+Special thanks to the challenge initiators and hackathon organizers
 ---
 
 <h2 id="directory-structure">📁 Directory Structure</h2>
 
 - **[ifc5-viewer/](ifc5-viewer/)**
 
-  - **index.html** — Main entry point for the IFC5 viewer. Loads IFC models via file or URL input.
+  - **index.html** — Main entry point for the IFC5 viewer. Loads exported IFC5 models with connection gometry via file or URL input.
   - **render.mjs** — Contains the Three.js rendering logic, viewer initialization, model tree construction, and intersection detection.
   - **hello-wall.ifcx** — Example IFC5 file illustrating wall geometries and connections.
 
 - **[ifc-viewer/](ifc-viewer/)**
 
-  - **index.html** — Traditional viewer interface with additional controls and a model list.
+  - **index.html** — Main viewer interface with additional controls and connection detection algorithm.
   - **package.json** — Build configuration (using Vite, TypeScript, etc.) and dependency definitions.
 
 - **[demo/](demo/)**
@@ -81,7 +81,7 @@ For effective collaboration among companies, it is crucial to delineate both phy
   - **match_excel_pdf_and_upload.py** — Script to process extracted data, generate images via PDF analysis, and upload results.
 
 - **[ifc5-export-test/](ifc5-export-test/)**
-  - **create_ifc5_file.py** — Python script to generate custom IFC5 files (with thick walls, annotation surfaces, spheres, etc.).
+  - **create_ifc5_file.py** — Python script to test the generation of IFC5 files (with walls, annotation surfaces, spheres, etc.).
 
 ---
 
@@ -100,10 +100,10 @@ For effective collaboration among companies, it is crucial to delineate both phy
   Quick prototyping demos for rapid hackathon innovation.
 
 - **Data Analysis & Export:**  
-  Export CSV connection data, generate visual assets through PDF analysis, and integrate with external upload tools.
+  Export CSV connection data, explore assets through PDF analysis and integrate with external tools.
 
 - **IFC5 Export:**  
-  Programmatically generate IFC5 files with connection geometry for further processing. For now a rather theoretical feature but it's there.
+  Generates IFC5 files with connection geometry for further processing. For now a rather theoretical and experimental feature, but it's there.
 
 ---
 
@@ -117,7 +117,7 @@ For effective collaboration among companies, it is crucial to delineate both phy
 
 ### Setup Instructions
 
-1. **Install Dependencies (for main IFC Viewer)**
+1. **Install Dependencies (for main IFC Viewer with connection detection)**
 
    ```bash
    cd ifc-viewer
@@ -132,19 +132,18 @@ For effective collaboration among companies, it is crucial to delineate both phy
    npm run dev
    ```
 
-3. **Clone the Ifc5 viewer Repo - if you need it**
+3. **Clone the Ifc5 viewer Repo - if you need it to check exported connection geometries**
 
    ```bash
    git clone https://github.com/buildingSMART/IFC5-development.git
    cd IFC5-development
    ```
 
-4. **Run the Python Scripts - if you want to match pdf to model**
+4. **Run the Python Script - if you want to match a pdf catalog to model elements**
 
    From the repository root:
 
    ```bash
-   python3 ifc5-export-test/create_ifc5_file.py
    python3 pdf_analysis/match_excel_pdf_and_upload.py
    ```
 
@@ -164,18 +163,16 @@ For effective collaboration among companies, it is crucial to delineate both phy
 <h2 id="usage">🛠 Usage</h2>
 
 - **Loading Models:**  
-  Use the file upload or URL input in [ifc5-viewer/index.html](ifc5-viewer/index.html) to load your IFC files.
+  Use the file upload button to load your IFC files.
 
 - **Interacting with Models:**  
-  Navigate using orbit controls; click on elements within the model tree to inspect detailed attributes.
+  Navigate using orbit controls; click on elements within the 3d space to inspect detailed attributes, properties, materials and quantities.
 
 - **Exploring Connections:**  
-  Check connection data via the generated CSV ([pdf_analysis/extracted_ifc.csv](pdf_analysis/extracted_ifc.csv)) and refer to [demo/explain.md](demo/explain.md) and [demo/explain.html](demo/explain.html) for a deeper understanding.
+  Run connection detection and check connection data via UI or the generated CSV ([pdf_analysis/extracted_ifc.csv](pdf_analysis/extracted_ifc.csv)) and refer to [demo/explain.md](demo/explain.md) and [demo/explain.html](demo/explain.html) for a deeper explanations of underlying principles.
 
 - **Generating Custom IFC Files:**  
   We have a Button to export to Ifc5, developed and tested in [ifc5-export-test/](ifc5-export-test/) to produce IFC5 files with custom geometries and material overrides.
-
----
 
 ---
 
@@ -231,8 +228,6 @@ For more details, please visit the [AGPL-3.0 License website](https://www.gnu.or
 
 <h2 id="acknowledgments">💖 Acknowledgments</h2>
 
-- Special thanks to the challenge initiators and hackathon organizers
-  -💝[buildingSMART International](https://github.com/buildingSMART/IFC5-development) for their foundational work.
 - Many thanks to all hackathon participants and contributors for their creative input and rapid prototyping spirit!
 
 ---
@@ -241,14 +236,14 @@ For more details, please visit the [AGPL-3.0 License website](https://www.gnu.or
 
 This project draws inspiration from and builds upon the work of many remarkable open source projects and communities. In particular, we would like to acknowledge:
 
-- **[ThatOpen/engine_web-ifc](https://github.com/ThatOpen/engine_web-ifc)** – An innovative project for reading and writing IFC files at native speeds, which has greatly influenced our approach.
+- **[ThatOpen/engine_web-ifc](https://github.com/ThatOpen/engine_web-ifc)** – An innovative project for clientside reading of IFC files at native speeds, which has greatly influenced our approach.
 - **[Three.js](https://threejs.org/)** – For providing an outstanding 3D rendering library that enables interactive web-based visualization.
 - **[buildingSMART International](https://github.com/buildingSMART/IFC5-development)** – For the foundational work on the IFC5 standard and the IFC5 viewer.
-- **[ifcopenshell](https://github.com/ifcopenshell/ifcopenshell)** – For a Python API to read and write IFC files.
+- **[ifcopenshell](https://github.com/ifcopenshell/ifcopenshell)** – For a Python library to read and write IFC files, great for rapid testing and prototyping.
 - and many more...
 
 We are grateful for the dedication of these communities; their contributions empower us to build cutting-edge solutions.
 
 ---
 
-Happy hacking and enjoy exploring the future of timber construction, IFC, and connections! 🚀🔗
+Many thanks to all hackathon participants and contributors for their creative input and rapid prototyping spirit! 🚀🔗
