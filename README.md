@@ -1,6 +1,6 @@
 # 🌟 Hackathon Connection Detection in IFC Viewer 🌟
 
----
+![Hackathon Connection Detection Demo](https://raw.githubusercontent.com/louistrue/connections-aec-hackathon-zh-25/main/demo/hack03.gif)
 
 ## 📚 Table of Contents
 
