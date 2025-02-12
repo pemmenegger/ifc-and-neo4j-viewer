@@ -51,7 +51,6 @@ For effective collaboration among companies, it is crucial to delineate both phy
 - **Fabian Scheurer** – HM Hochschule München, Prof. Digitale Bautechnologie & Fabrikation.
 - **Michael Schaerschaerholzbau** – Managing Director.
 
-Special thanks to the challenge initiators and hackathon organizers
 ---
 
 <h2 id="directory-structure">📁 Directory Structure</h2>
