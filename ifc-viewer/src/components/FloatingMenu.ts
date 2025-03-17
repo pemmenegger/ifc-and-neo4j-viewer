@@ -1,4 +1,4 @@
-import { IFCViewer } from "../app";
+import { IFCViewer } from "../IFCViewer";
 import { Connections } from "./Connections";
 
 export class FloatingMenu {

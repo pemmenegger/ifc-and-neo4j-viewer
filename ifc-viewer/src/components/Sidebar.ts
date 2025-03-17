@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { IFCViewer } from "../app";
+import { IFCViewer } from "../IFCViewer";
 import { IFCModel } from "../types";
 
 // Assume a Connection interface is available or define it here
@@ -151,9 +151,11 @@ export class Sidebar {
     // Attach collapse toggle event if an existing handle is present.
     const modelsPanel = document.querySelector(".models-panel") as HTMLElement;
     if (!modelsPanel) return;
-    
+
     // Look for an existing collapse toggle button in the panel.
-    const collapseBtn = modelsPanel.querySelector(".sidebar-collapse-btn") as HTMLButtonElement;
+    const collapseBtn = modelsPanel.querySelector(
+      ".sidebar-collapse-btn"
+    ) as HTMLButtonElement;
     if (collapseBtn) {
       collapseBtn.addEventListener("click", () => {
         if (modelsPanel.classList.contains("collapsed")) {

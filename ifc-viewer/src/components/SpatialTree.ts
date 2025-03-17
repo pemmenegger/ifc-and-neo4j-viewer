@@ -1,5 +1,5 @@
 import { IFCBUILDING, IFCBUILDINGSTOREY, IFCPROJECT, IFCSITE } from "web-ifc";
-import { IFCViewer } from "../app";
+import { IFCViewer } from "../IFCViewer";
 import { IFCModel } from "../types";
 
 interface IFCElement {

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { IFCViewer } from "../app";
+import { IFCViewer } from "../IFCViewer";
 import { IfcAPI } from "web-ifc/web-ifc-api";
 
 // Added ExtendedIfcAPI to extend IfcAPI with 'properties' member

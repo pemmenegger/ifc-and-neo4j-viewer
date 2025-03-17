@@ -1,4 +1,4 @@
-import { IFCViewer } from "../app";
+import { IFCViewer } from "../IFCViewer";
 
 export class PropertiesPanel {
   private panel!: HTMLElement | null;

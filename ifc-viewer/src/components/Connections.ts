@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { IFCViewer } from "../app";
+import { IFCViewer } from "../IFCViewer";
 import {
   FastIntersectionDetector,
   IntersectionVisualizer,
