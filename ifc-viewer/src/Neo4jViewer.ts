@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import { IFCViewer } from "./IFCViewer";
 
 interface Node {
   id: string;
@@ -27,6 +28,7 @@ export class Neo4jViewer {
   private guid: string | null;
   private selectedNode: Node | null;
   private graphData: GraphData | null;
+  private ifcViewer: IFCViewer | null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -40,6 +42,10 @@ export class Neo4jViewer {
     this.guid = null;
     this.selectedNode = null;
     this.graphData = null;
+  }
+
+  public setIfcViewer(ifcViewer: IFCViewer) {
+    this.ifcViewer = ifcViewer;
   }
 
   public async loadGraph(guid: string | null = null) {
@@ -168,5 +174,8 @@ export class Neo4jViewer {
       y: 10,
     };
     console.log("Selected Node:", this.selectedNode);
+
+    // TODO
+    // Select the IFC element in the IFCViewer
   }
 }

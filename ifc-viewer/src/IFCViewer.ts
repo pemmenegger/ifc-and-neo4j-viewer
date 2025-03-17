@@ -9,6 +9,7 @@ import { Sidebar } from "./components/Sidebar";
 import { SpatialTree } from "./components/SpatialTree";
 import { GeometryData, IFCModel, PlacedGeometry } from "./types";
 import { FilterPanel } from "./components/FilterPanel";
+import { Neo4jViewer } from "./components/Neo4jViewer";
 
 export class IFCViewer {
   private container: HTMLElement;
@@ -36,14 +37,16 @@ export class IFCViewer {
   private pdfImagePaths: string[];
   private pdfPreviewWindow: HTMLDivElement;
   private lastHoveredModel: IFCModel | null = null;
+  private neo4jViewer: Neo4jViewer;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, neo4jViewer: Neo4jViewer) {
     this.container = container;
     this.loadingOverlay = null;
     this.models = new Map();
     this.modelCounter = 0;
     this.meshCounter = 0;
     this.sectionBoxHelper = null;
+    this.neo4jViewer = neo4jViewer;
 
     // Initialize Three.js components
     this.scene = new THREE.Scene();
@@ -956,6 +959,17 @@ export class IFCViewer {
       const modelIntersects = this.raycaster.intersectObject(model, true);
       intersects = intersects.concat(modelIntersects);
     });
+
+    // Only show adjacent nodes for the selected graph node
+    if (intersects.length > 0) {
+      const intersect = intersects[0];
+      this.picker.getGlobalId(intersect.object).then((globalId) => {
+        this.neo4jViewer.loadGraph(globalId);
+        console.log("Global ID:", globalId);
+      });
+    } else {
+      this.neo4jViewer.loadGraph();
+    }
 
     // Pass the event to the picker
     this.picker.handleClick(event);

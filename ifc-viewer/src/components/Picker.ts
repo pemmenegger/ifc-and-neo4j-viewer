@@ -248,79 +248,102 @@ export class Picker {
     this.selectedObject = null;
   }
 
+  private extractModelAndExpressId(selected: THREE.Object3D): {
+    modelID: number;
+    expressID: number;
+  } {
+    const modelID = selected.userData?.modelID ?? null;
+    const expressID = selected.userData?.expressID ?? null;
+
+    if (
+      modelID === null ||
+      expressID === null ||
+      modelID === undefined ||
+      expressID === undefined
+    ) {
+      console.warn("Missing IDs:", { modelID, expressID });
+      return { modelID: 0, expressID: 0 };
+    }
+
+    return { modelID, expressID };
+  }
+
+  private async getElementProperties(
+    selected: THREE.Object3D
+  ): Promise<{ props: any; psets: IFCPropertySet[] }> {
+    try {
+      const { modelID, expressID } = this.extractModelAndExpressId(selected);
+      const ifcAPI = this.viewer.getIfcAPI() as ExtendedIfcAPI;
+      const props = await ifcAPI.properties.getItemProperties(
+        modelID,
+        expressID,
+        true
+      );
+      const psets = await ifcAPI.properties.getPropertySets(
+        modelID,
+        expressID,
+        true
+      );
+      return { props, psets };
+    } catch (error) {
+      console.error("Error in getIfcAPIProperties:", error);
+      return null;
+    }
+  }
+
+  public async getGlobalId(selected: THREE.Object3D): Promise<string | null> {
+    try {
+      const { props } = await this.getElementProperties(selected);
+      return props.GlobalId?.value || null;
+    } catch (error) {
+      console.error("Error in getGlobalId:", error);
+      return null;
+    }
+  }
+
   public async displayProperties(selected: THREE.Object3D): Promise<void> {
     try {
-      const modelID = selected.userData?.modelID ?? null;
-      const expressID = selected.userData?.expressID ?? null;
-
-      if (
-        modelID === null ||
-        expressID === null ||
-        modelID === undefined ||
-        expressID === undefined
-      ) {
-        console.warn("Missing IDs:", { modelID, expressID });
+      const { modelID, expressID } = this.extractModelAndExpressId(selected);
+      const { props, psets } = await this.getElementProperties(selected);
+      if (!props) {
+        console.warn("No properties found");
         return;
       }
 
-      try {
-        const ifcAPI = this.viewer.getIfcAPI() as ExtendedIfcAPI;
-        const props = await ifcAPI.properties.getItemProperties(
-          modelID,
-          expressID,
-          true
-        );
+      const quantities = await this.getQuantities(modelID, expressID);
 
-        if (!props) {
-          console.warn("No properties found");
-          return;
-        }
-
-        // Using the extended ifcAPI to get property sets
-        const psets = (await ifcAPI.properties.getPropertySets(
-          modelID,
-          expressID,
-          true
-        )) as IFCPropertySet[];
-        const quantities = await this.getQuantities(modelID, expressID);
-
-        // Format properties for display
-        const formattedProps = {
-          elementInfo: {
-            "IFC Type": props.constructor.name.replace("IFC", "") || "Unknown",
-            "Global ID": props.GlobalId?.value || "Unknown",
-            Name: props.Name?.value || "Unnamed",
-            Description: props.Description?.value || "No description",
-            "Object Type": props.ObjectType?.value || "Unknown",
-            Tag: props.Tag?.value || "No tag",
-            "Express ID": expressID,
-            "Model ID": modelID,
-          },
-          propertysets: psets
-            .filter(
-              (pset: IFCPropertySet) => pset.Name?.value !== "BaseQuantities"
-            )
-            .map((pset: IFCPropertySet) => ({
-              name: pset.Name?.value || "Unnamed Property Set",
-              properties: this.formatPsetProperties(
-                pset.HasProperties || pset.Quantities
-              ),
-            })),
-          materials: await this.getMaterials(modelID, expressID),
-          quantities: quantities.map((qset: IFCPropertySet) => ({
-            name: qset.Name?.value || "Unnamed Quantity Set",
-            quantities: this.formatQuantities(qset.Quantities),
+      // Format properties for display
+      const formattedProps = {
+        elementInfo: {
+          "IFC Type": props.constructor.name.replace("IFC", "") || "Unknown",
+          "Global ID": props.GlobalId?.value || "Unknown",
+          Name: props.Name?.value || "Unnamed",
+          Description: props.Description?.value || "No description",
+          "Object Type": props.ObjectType?.value || "Unknown",
+          Tag: props.Tag?.value || "No tag",
+          "Express ID": expressID,
+          "Model ID": modelID,
+        },
+        propertysets: psets
+          .filter(
+            (pset: IFCPropertySet) => pset.Name?.value !== "BaseQuantities"
+          )
+          .map((pset: IFCPropertySet) => ({
+            name: pset.Name?.value || "Unnamed Property Set",
+            properties: this.formatPsetProperties(
+              pset.HasProperties || pset.Quantities
+            ),
           })),
-        };
+        materials: await this.getMaterials(modelID, expressID),
+        quantities: quantities.map((qset: IFCPropertySet) => ({
+          name: qset.Name?.value || "Unnamed Quantity Set",
+          quantities: this.formatQuantities(qset.Quantities),
+        })),
+      };
 
-        this.viewer
-          .getPropertiesPanel()
-          .displayElementProperties(formattedProps);
-      } catch (error) {
-        console.error("Error getting IFC properties:", error);
-      }
+      this.viewer.getPropertiesPanel().displayElementProperties(formattedProps);
     } catch (error) {
-      console.error("Error in displayProperties:", error);
+      console.error("Error getting IFC properties:", error);
     }
   }
 

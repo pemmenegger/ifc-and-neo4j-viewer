@@ -13,8 +13,10 @@ document.addEventListener("DOMContentLoaded", () => {
     throw new Error("Neo4j Viewer container not found");
   }
 
-  const ifcViewer = new IFCViewer(ifcContainer);
+  // Initiate and connect the viewers
   const neo4jViewer = new Neo4jViewer(neo4jContainer);
+  const ifcViewer = new IFCViewer(ifcContainer, neo4jViewer);
+  neo4jViewer.setIfcViewer(ifcViewer);
 
   const input = document.getElementById("file-input") as HTMLInputElement;
   if (!input) {
