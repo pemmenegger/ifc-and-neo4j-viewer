@@ -82,19 +82,11 @@ export class Neo4jViewer {
     this.defineLinkArrow(svg);
 
     const simulation = this.setupSimulation(data);
-    const { linkLines, linkLabels } = this.drawLinks(g, data.links);
-    const { nodeCircles, nodeLabels } = this.drawNodes(
-      g,
-      data.nodes,
-      simulation
-    );
-    // const links = this.drawLinks(g, data.links);
-    // const linkLabels = this.drawLinkLabels(g, data.links);
-    // const node = this.drawNodes(g, data.nodes, simulation);
-    // const nodeLabels = this.drawNodeLabels(g, data.nodes);
+    const linkPaths = this.drawLinkPaths(g, data.links);
+    const nodeGroup = this.drawNodeGroup(g, data.nodes, simulation);
 
     simulation.on("tick", () => {
-      this.updateGraphPositions(linkLines, linkLabels, nodeCircles, nodeLabels);
+      this.updateGraphPositions(linkPaths, nodeGroup);
     });
   }
 
@@ -161,7 +153,7 @@ export class Neo4jViewer {
       .force("center", d3.forceCenter(width / 2, height / 2));
   }
 
-  private drawLinks(
+  private drawLinkPaths(
     g: d3.Selection<SVGGElement, unknown, null, undefined>,
     links: Link[]
   ) {
@@ -172,25 +164,29 @@ export class Neo4jViewer {
       .enter()
       .append("g");
 
-    const linkLines = linkGroup
-      .append("line")
-      .attr("class", "link")
+    const linkPaths = linkGroup
+      .append("path")
+      .attr("fill", "none")
       .attr("stroke", GREY)
       .attr("stroke-width", STROKE_WIDTH)
-      .attr("marker-end", `url(#${MARKER_ID})`);
+      .attr("marker-end", `url(#${MARKER_ID})`)
+      .attr("id", (_, i) => `link-path-${i}`);
 
-    const linkLabels = linkGroup
+    linkGroup
       .append("text")
-      .text((d: Link) => d.type)
-      .attr("class", "link-label")
-      .attr("fill", "#000")
+      .attr("dy", -3)
       .attr("font-size", 10)
-      .attr("text-anchor", "middle");
+      .attr("fill", GREY)
+      .append("textPath")
+      .attr("startOffset", "50%")
+      .attr("xlink:href", (_, i) => `#link-path-${i}`)
+      .attr("text-anchor", "middle")
+      .text((d) => d.type || "");
 
-    return { linkLines, linkLabels };
+    return linkPaths;
   }
 
-  private drawNodes(
+  private drawNodeGroup(
     g: d3.Selection<SVGGElement, unknown, null, undefined>,
     nodes: Node[],
     simulation: d3.Simulation<Node, Link>
@@ -208,11 +204,11 @@ export class Neo4jViewer {
       .enter()
       .append("g");
 
-    const nodeCircles = nodeGroup
+    nodeGroup
       .append("circle")
       .attr("class", "node")
       .attr("r", NODE_RADIUS)
-      .attr("fill", (d: Node) => getNodeColor(d))
+      .attr("fill", getNodeColor)
       .attr("stroke", GREY)
       .attr("stroke-width", STROKE_WIDTH)
       .call(
@@ -222,54 +218,50 @@ export class Neo4jViewer {
           .on("drag", this.dragged)
           .on("end", this.dragended(simulation))
       )
-      .on(
-        "click",
-        (event, d: Node) => d.properties.GUID && this.selectNode(event, d)
-      )
-      .on("mouseover", (event: MouseEvent, d: Node): void => {
-        d3.select(event.currentTarget as SVGCircleElement)
-          .attr("fill", d.properties.GUID ? NODE_SELECTED_COLOR : NODE_COLOR)
-          .attr("style", "cursor: pointer;");
+      .on("click", (event, d) => {
+        if (d.properties.GUID) {
+          this.selectNode(event, d);
+        }
       })
-      .on("mouseout", (event: MouseEvent, d: Node): void => {
-        d3.select(event.currentTarget as SVGCircleElement).attr("fill", () =>
-          getNodeColor(d)
-        );
+      .on("mouseover", function (event, d) {
+        d3.select(this)
+          .attr("fill", d.properties.GUID ? NODE_SELECTED_COLOR : NODE_COLOR)
+          .style("cursor", "pointer");
+      })
+      .on("mouseout", function (event, d) {
+        d3.select(this).attr("fill", getNodeColor(d));
       });
 
-    const nodeLabels = nodeGroup
+    nodeGroup
       .append("text")
+      .attr("class", "label")
       .attr("font-size", 10)
       .attr("fill", "#000")
-      .attr("user-select", "none")
       .attr("pointer-events", "none")
       .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
       .text((d) => {
-        const name = d.properties.Name || d.properties.name || d.labels[0];
-        return name.length > 10 ? name.substring(0, 8) + "..." : name;
+        const name =
+          d.properties.Name || d.properties.name || d.labels[0] || "";
+        return name.length > 10 ? name.slice(0, 8) + "..." : name;
       });
 
-    return { nodeCircles, nodeLabels };
+    return nodeGroup;
   }
 
   private updateGraphPositions(
-    linkLines: d3.Selection<SVGLineElement, Link, SVGGElement, unknown>,
-    linkLabels: d3.Selection<SVGTextElement, Link, SVGGElement, unknown>,
-    nodeCircles: d3.Selection<SVGCircleElement, Node, SVGGElement, unknown>,
-    nodeLabels: d3.Selection<SVGTextElement, Node, SVGGElement, unknown>
+    linkPaths: d3.Selection<SVGTextElement, Link, SVGGElement, unknown>,
+    nodeGroup: d3.Selection<SVGCircleElement, Node, SVGGElement, unknown>
   ) {
-    linkLines
-      .attr("x1", (d: any) => d.source.x)
-      .attr("y1", (d: any) => d.source.y)
-      .attr("x2", (d: any) => d.target.x)
-      .attr("y2", (d: any) => d.target.y);
+    linkPaths.attr("d", (d: any) => {
+      const x1 = d.source.x;
+      const y1 = d.source.y;
+      const x2 = d.target.x;
+      const y2 = d.target.y;
+      return `M${x1},${y1} L${x2},${y2}`;
+    });
 
-    linkLabels
-      .attr("x", (d: any) => (d.source.x + d.target.x) / 2)
-      .attr("y", (d: any) => (d.source.y + d.target.y) / 2 - 5);
-
-    nodeCircles.attr("cx", (d) => d.x!).attr("cy", (d) => d.y!);
-    nodeLabels.attr("x", (d) => d.x!).attr("y", (d) => d.y!);
+    nodeGroup.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
   }
 
   private dragstarted(simulation: d3.Simulation<Node, Link>) {
