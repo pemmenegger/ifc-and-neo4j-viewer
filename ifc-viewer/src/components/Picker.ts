@@ -94,7 +94,9 @@ export class Picker {
     });
   }
 
-  private findElementGroup(object: THREE.Object3D): THREE.Object3D | null {
+  private findElementGroupByObject(
+    object: THREE.Object3D
+  ): THREE.Object3D | null {
     let current: THREE.Object3D | null = object;
 
     while (current && !current.name.startsWith("Element_")) {
@@ -104,30 +106,59 @@ export class Picker {
     return current;
   }
 
+  private findElementGroupByIDs(
+    modelID: number,
+    expressID: number
+  ): THREE.Object3D | null {
+    let elementGroup: THREE.Object3D | null = null;
+
+    this.viewer.getScene().traverse((child) => {
+      if (
+        child.name.startsWith("Element_") &&
+        child.userData?.modelID === modelID &&
+        child.userData?.expressID === expressID
+      ) {
+        elementGroup = child;
+      }
+    });
+
+    return elementGroup;
+  }
+
+  public async selectElementGroupByIDs(modelID: number, expressID: number) {
+    let elementGroup = this.findElementGroupByIDs(modelID, expressID);
+    await this.selectElementGroup(elementGroup);
+  }
+
+  private async selectElementGroup(
+    elementGroup: THREE.Object3D | null
+  ): Promise<void> {
+    if (this.selectedObject) {
+      this.resetSelection();
+    }
+
+    if (elementGroup) {
+      this.selectedObject = elementGroup;
+      this.highlightSelection();
+      await this.displayProperties(elementGroup);
+    }
+  }
+
   public async handleClick(event: MouseEvent): Promise<void> {
     try {
       const intersectedObject = this.getIntersectedObject(event);
 
       if (intersectedObject) {
-        const elementGroup = this.findElementGroup(intersectedObject);
+        const elementGroup = this.findElementGroupByObject(intersectedObject);
 
         if (!elementGroup) {
           return;
         }
 
-        // Reset previous selection
-        if (this.selectedObject) {
-          this.resetSelection();
-        }
-
-        // Set new selection
-        this.selectedObject = elementGroup;
-        this.highlightSelection();
-
-        await this.displayProperties(elementGroup);
+        await this.selectElementGroup(elementGroup);
       } else {
         // Clicked empty space - clear selection
-        this.resetSelection();
+        await this.selectElementGroup(null);
       }
     } catch (error) {
       console.error("Error in handleClick:", error);
@@ -143,7 +174,7 @@ export class Picker {
     }
 
     if (intersectedObject) {
-      const elementGroup = this.findElementGroup(intersectedObject);
+      const elementGroup = this.findElementGroupByObject(intersectedObject);
 
       if (elementGroup && elementGroup !== this.selectedObject) {
         // Store pre-pick state
@@ -340,6 +371,8 @@ export class Picker {
           quantities: this.formatQuantities(qset.Quantities),
         })),
       };
+
+      console.log("Formatted properties:", formattedProps);
 
       this.viewer.getPropertiesPanel().displayElementProperties(formattedProps);
     } catch (error) {

@@ -9,7 +9,7 @@ import { Sidebar } from "./components/Sidebar";
 import { SpatialTree } from "./components/SpatialTree";
 import { GeometryData, IFCModel, PlacedGeometry } from "./types";
 import { FilterPanel } from "./components/FilterPanel";
-import { Neo4jViewer } from "./components/Neo4jViewer";
+import { Neo4jViewer } from "./Neo4jViewer";
 
 export class IFCViewer {
   private container: HTMLElement;
@@ -965,7 +965,6 @@ export class IFCViewer {
       const intersect = intersects[0];
       this.picker.getGlobalId(intersect.object).then((globalId) => {
         this.neo4jViewer.loadGraph(globalId);
-        console.log("Global ID:", globalId);
       });
     } else {
       this.neo4jViewer.loadGraph();
@@ -1055,5 +1054,29 @@ export class IFCViewer {
   private hidePdfPreview(): void {
     this.pdfPreviewWindow.style.display = "none";
     this.lastHoveredModel = null;
+  }
+
+  public async selectElementByGUID(guid: string): Promise<void> {
+    try {
+      let modelID: number | null = null;
+      let expressID: number | null = null;
+
+      this.models.forEach((model) => {
+        modelID = model.modelID;
+        expressID = this.ifcAPI.GetExpressIdFromGuid(modelID, guid);
+        if (modelID && expressID) {
+          return;
+        }
+      });
+
+      if (!modelID && !expressID) {
+        console.error("Element not found in any model:", guid);
+        return;
+      }
+
+      await this.picker.selectElementGroupByIDs(modelID, expressID);
+    } catch (error) {
+      console.error("Error selecting element by GUID:", error);
+    }
   }
 }

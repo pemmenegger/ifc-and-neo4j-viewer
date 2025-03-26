@@ -32,8 +32,6 @@ export class Neo4jViewer {
   private container: HTMLElement;
   private svgElement: SVGSVGElement;
   private guid: string | null;
-  private selectedNode: Node | null;
-  private graphData: GraphData | null;
   private ifcViewer: IFCViewer | null = null;
 
   constructor(container: HTMLElement) {
@@ -44,15 +42,14 @@ export class Neo4jViewer {
     );
     this.container.appendChild(this.svgElement);
     this.guid = null;
-    this.selectedNode = null;
-    this.graphData = null;
   }
 
   public setIfcViewer(ifcViewer: IFCViewer) {
     this.ifcViewer = ifcViewer;
   }
 
-  public async loadGraph(guid: string | null = null) {
+  public async loadGraph(guid: string | null = null, force = false) {
+    if (!force && guid === this.guid) return;
     this.guid = guid;
     await this.fetchGraphData();
   }
@@ -67,7 +64,6 @@ export class Neo4jViewer {
       const result = await response.json();
 
       if (result.success && result.data) {
-        this.graphData = result.data;
         this.createForceGraph(result.data);
       }
     } catch (error) {
@@ -226,7 +222,7 @@ export class Neo4jViewer {
       .on("mouseover", function (event, d) {
         d3.select(this)
           .attr("fill", d.properties.GUID ? NODE_SELECTED_COLOR : NODE_COLOR)
-          .style("cursor", "pointer");
+          .style("cursor", d.properties.GUID ? "pointer" : "normal");
       })
       .on("mouseout", function (event, d) {
         d3.select(this).attr("fill", getNodeColor(d));
@@ -287,14 +283,10 @@ export class Neo4jViewer {
 
   private selectNode(event: MouseEvent, node: Node) {
     event.stopPropagation();
-    this.selectedNode = { ...node, x: 10, y: 10 };
-    console.log("Selected Node GUID:", node.properties.GUID);
 
-    // this.ifcViewer?.selectNode?.(node.properties.GUID);
     this.loadGraph(node.properties.GUID);
-
-    // TODO:
-    // - Show node + edge details
-    // - Sync with IFC viewer
+    if (this.ifcViewer && node.properties.GUID) {
+      this.ifcViewer.selectElementByGUID(node.properties.GUID);
+    }
   }
 }

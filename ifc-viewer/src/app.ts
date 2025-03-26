@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (file) {
         await ifcViewer.loadIFC(file);
-        await neo4jViewer.loadGraph();
+        await neo4jViewer.loadGraph(null, true);
       }
     },
     false
