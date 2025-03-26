@@ -68,3 +68,23 @@ export interface IntersectionResult {
     surface?: THREE.BufferGeometry;
   };
 }
+
+export interface Node {
+  id: string;
+  labels: string[];
+  properties: Record<string, any>;
+  x: number;
+  y: number;
+}
+
+export interface Link {
+  source: string | Node;
+  target: string | Node;
+  type: string;
+  properties: Record<string, any>;
+}
+
+export interface GraphData {
+  nodes: Node[];
+  links: Link[];
+}

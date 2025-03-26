@@ -1,23 +1,6 @@
 import * as d3 from "d3";
 import { IFCViewer } from "./IFCViewer";
-
-interface Node {
-  id: string;
-  labels: string[];
-  properties: Record<string, any>;
-  x: number;
-  y: number;
-}
-interface Link {
-  source: string | Node;
-  target: string | Node;
-  type: string;
-  properties: Record<string, any>;
-}
-interface GraphData {
-  nodes: Node[];
-  links: Link[];
-}
+import { GraphData, Node, Link } from "./types";
 
 const SERVER_BASE_URL = "http://localhost:3001";
 const NODE_RADIUS = 30;
