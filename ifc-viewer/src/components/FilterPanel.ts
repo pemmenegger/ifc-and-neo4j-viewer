@@ -41,8 +41,13 @@ export class FilterPanel {
   }
 
   private setupPanelCollapseObserver(): void {
-    const propertiesPanel = document.querySelector(".properties-panel");
-    if (!propertiesPanel) return;
+    const propertiesPanel = document.querySelector(
+      "#ifc-properties-panel > .properties-panel"
+    );
+    if (!propertiesPanel) {
+      console.error("Failed to find properties panel");
+      return;
+    }
 
     const observer = new MutationObserver(() => {
       const isCollapsed = propertiesPanel.classList.contains("collapsed");

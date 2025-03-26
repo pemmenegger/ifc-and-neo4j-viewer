@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 import { IFCViewer } from "./IFCViewer";
 import { GraphData, Node, Link } from "./types";
+import { PropertiesPanel } from "./components/PropertiesPanel";
 
 const SERVER_BASE_URL = "http://localhost:3001";
 const NODE_RADIUS = 30;
@@ -15,6 +16,7 @@ export class Neo4jViewer {
   private container: HTMLElement;
   private svgElement: SVGSVGElement;
   private guid: string | null;
+  private propertiesPanel: PropertiesPanel;
   private ifcViewer: IFCViewer | null = null;
 
   constructor(container: HTMLElement) {
@@ -25,6 +27,7 @@ export class Neo4jViewer {
     );
     this.container.appendChild(this.svgElement);
     this.guid = null;
+    this.propertiesPanel = new PropertiesPanel("neo4j-properties-panel");
   }
 
   public setIfcViewer(ifcViewer: IFCViewer) {
@@ -63,10 +66,14 @@ export class Neo4jViewer {
     const simulation = this.setupSimulation(data);
     const linkPaths = this.drawLinkPaths(g, data.links);
     const nodeGroup = this.drawNodeGroup(g, data.nodes, simulation);
-
     simulation.on("tick", () => {
       this.updateGraphPositions(linkPaths, nodeGroup);
     });
+
+    const selectedNode = data.nodes.find(
+      (node) => node.properties.GUID === this.guid
+    );
+    this.selectNode(selectedNode);
   }
 
   private setupSvgCanvas() {
@@ -198,14 +205,16 @@ export class Neo4jViewer {
           .on("end", this.dragended(simulation))
       )
       .on("click", (event, d) => {
+        event.stopPropagation();
         if (d.properties.GUID) {
-          this.selectNode(event, d);
+          this.loadGraph(d.properties.GUID);
         }
+        this.selectNode(d);
       })
       .on("mouseover", function (event, d) {
         d3.select(this)
           .attr("fill", d.properties.GUID ? NODE_SELECTED_COLOR : NODE_COLOR)
-          .style("cursor", d.properties.GUID ? "pointer" : "normal");
+          .style("cursor", "pointer");
       })
       .on("mouseout", function (event, d) {
         d3.select(this).attr("fill", getNodeColor(d));
@@ -264,12 +273,17 @@ export class Neo4jViewer {
     };
   }
 
-  private selectNode(event: MouseEvent, node: Node) {
-    event.stopPropagation();
-
-    this.loadGraph(node.properties.GUID);
-    if (this.ifcViewer && node.properties.GUID) {
-      this.ifcViewer.selectElementByGUID(node.properties.GUID);
+  private selectNode(node: Node | null) {
+    if (!node) {
+      this.propertiesPanel.clear();
+      return;
     }
+
+    this.propertiesPanel.displayElementProperties({
+      elementInfo: node.properties,
+    });
+
+    if (node.properties.GUID)
+      this.ifcViewer.selectElementByGUID(node.properties.GUID);
   }
 }

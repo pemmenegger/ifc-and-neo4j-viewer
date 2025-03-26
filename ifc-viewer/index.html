@@ -73,23 +73,45 @@
       </div>
     </div>
 
-    <div class="properties-panel">
-      <div class="properties-header">
-        <h3>Properties</h3>
-        <button class="properties-toggle">
-          <i class="fas fa-chevron-right"></i>
-        </button>
-      </div>
-      <div class="properties-content">
-        <div class="no-selection">No element selected</div>
-        <div class="element-info" style="display: none">
-          <div class="property-group">
-            <h4>Element Information</h4>
-            <div id="element-attributes" class="property-list"></div>
+    <div id="ifc-properties-panel">
+      <div class="properties-panel">
+        <div class="properties-header">
+          <h3>IFC Properties</h3>
+          <button class="properties-toggle">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+        <div class="properties-content">
+          <div class="no-selection">No element selected</div>
+          <div class="element-info" style="display: none">
+            <div class="property-group">
+              <h4>Element Information</h4>
+              <div id="element-attributes" class="property-list"></div>
+            </div>
+            <div class="property-group">
+              <h4>Properties</h4>
+              <div id="element-properties" class="property-list"></div>
+            </div>
           </div>
-          <div class="property-group">
-            <h4>Properties</h4>
-            <div id="element-properties" class="property-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="neo4j-properties-panel">
+      <div class="properties-panel">
+        <div class="properties-header">
+          <h3>Node Properties</h3>
+          <button class="properties-toggle">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+        <div class="properties-content">
+          <div class="no-selection">No element selected</div>
+          <div class="element-info" style="display: none">
+            <div class="property-group">
+              <h4>Element Information</h4>
+              <div id="element-attributes" class="property-list"></div>
+            </div>
           </div>
         </div>
       </div>

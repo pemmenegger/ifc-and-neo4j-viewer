@@ -355,11 +355,18 @@
   }
 }
 
+#ifc-properties-panel > .properties-panel {
+  top: 20px;
+}
+
+#neo4j-properties-panel > .properties-panel {
+  top: calc(50vh + 20px);
+}
+
 /* Properties Panel */
 .properties-panel {
-  position: fixed;
+  position: absolute;
   right: 20px;
-  top: 20px;
   width: 300px;
   height: calc(50vh - 40px);
   background-color: white;

@@ -73,7 +73,7 @@ export class IFCViewer {
 
     // Initialize UI components
     this.picker = new Picker(this);
-    this.propertiesPanel = new PropertiesPanel(this);
+    this.propertiesPanel = new PropertiesPanel("ifc-properties-panel");
     this.floatingMenu = new FloatingMenu(this);
     this.sidebar = new Sidebar(this);
     this.spatialTree = new SpatialTree(this);

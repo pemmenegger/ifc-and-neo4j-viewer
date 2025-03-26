@@ -1,15 +1,13 @@
-import { IFCViewer } from "../IFCViewer";
-
 export class PropertiesPanel {
+  private panelId: string;
   private panel!: HTMLElement | null;
   private noSelection!: HTMLElement | null;
   private elementInfo!: HTMLElement | null;
   private attributesList!: HTMLElement | null;
-  private propertiesList!: HTMLElement | null;
-  private viewer: IFCViewer;
+  private propertiesList: HTMLElement | null;
 
-  constructor(viewer: IFCViewer) {
-    this.viewer = viewer;
+  constructor(panelId: string) {
+    this.panelId = panelId;
     this.initializeElements();
   }
 
@@ -23,34 +21,42 @@ export class PropertiesPanel {
   }
 
   private findElements(): void {
-    this.panel = document.querySelector(".properties-panel");
-    this.noSelection = document.querySelector(".no-selection");
-    this.elementInfo = document.querySelector(".element-info");
-    this.attributesList = document.getElementById("element-attributes");
-    this.propertiesList = document.getElementById("element-properties");
+    this.panel = document.querySelector(`#${this.panelId}`);
 
-    if (
-      !this.panel ||
-      !this.noSelection ||
-      !this.elementInfo ||
-      !this.attributesList ||
-      !this.propertiesList
-    ) {
-      console.error("Failed to find all required properties panel elements");
+    if (!this.panel) {
+      console.error("Failed to find properties panel");
+      return;
     }
+
+    this.noSelection = this.panel.querySelector(".no-selection");
+    if (!this.noSelection) {
+      console.error(`${this.panelId}: Failed to find '.no-selection'`);
+    }
+
+    this.elementInfo = this.panel.querySelector(".element-info");
+    if (!this.elementInfo) {
+      console.error(`${this.panelId}: Failed to find '.element-info'`);
+    }
+
+    this.attributesList = this.panel.querySelector("#element-attributes");
+    if (!this.attributesList) {
+      console.error(`${this.panelId}: Failed to find '#element-attributes'`);
+    }
+
+    this.propertiesList = this.panel.querySelector("#element-properties");
   }
 
   public setupPropertiesPanel(): void {
     // Toggle properties panel
-    const propertiesPanel = document.querySelector(".properties-panel");
-    const propertiesToggle = document.querySelector(".properties-toggle");
+    const propertiesPanel = this.panel.querySelector(".properties-panel");
+    const propertiesToggle = this.panel.querySelector(".properties-toggle");
 
     if (propertiesPanel && propertiesToggle) {
       propertiesToggle.addEventListener("click", () => {
         propertiesPanel.classList.toggle("collapsed");
 
         // Adjust settings panel position if it exists
-        const settingsPanel = document.querySelector(".settings-panel");
+        const settingsPanel = this.panel.querySelector(".settings-panel");
         if (settingsPanel instanceof HTMLElement) {
           if (propertiesPanel.classList.contains("collapsed")) {
             settingsPanel.style.right = "1rem";
@@ -68,29 +74,18 @@ export class PropertiesPanel {
       !this.panel ||
       !this.noSelection ||
       !this.elementInfo ||
-      !this.attributesList ||
-      !this.propertiesList
+      !this.attributesList
     ) {
       console.error("Missing DOM elements");
-      this.findElements(); // Try to find elements again
-      if (
-        !this.panel ||
-        !this.noSelection ||
-        !this.elementInfo ||
-        !this.attributesList ||
-        !this.propertiesList
-      ) {
-        return;
-      }
     }
 
     // Enhanced logging for debugging
-    console.groupCollapsed("Raw properties data");
-    console.log("Element Info:", props.elementInfo);
-    console.log("Property Sets:", props.propertysets);
-    console.log("Materials:", props.materials);
-    console.log("Quantities:", props.quantities);
-    console.groupEnd();
+    // console.groupCollapsed("Raw properties data");
+    // console.log("Element Info:", props.elementInfo);
+    // console.log("Property Sets:", props.propertysets);
+    // console.log("Materials:", props.materials);
+    // console.log("Quantities:", props.quantities);
+    // console.groupEnd();
 
     try {
       // Show properties panel
@@ -98,11 +93,7 @@ export class PropertiesPanel {
       this.elementInfo.style.display = "block";
       this.panel.classList.remove("collapsed");
 
-      // Clear previous content
       this.attributesList.innerHTML = "";
-      this.propertiesList.innerHTML = "";
-
-      // Display element info with improved formatting
       if (props.elementInfo) {
         const infoMap = new Map(Object.entries(props.elementInfo));
         infoMap.forEach((value, key) => {
@@ -114,7 +105,10 @@ export class PropertiesPanel {
         });
       }
 
-      // Improved property set display
+      if (!this.propertiesList) return;
+
+      this.propertiesList.innerHTML = "";
+
       if (props.propertysets?.length > 0) {
         const psetContainer = this.createSectionContainer("Property Sets");
         props.propertysets.forEach((pset: any) => {
@@ -123,7 +117,6 @@ export class PropertiesPanel {
         this.propertiesList.appendChild(psetContainer);
       }
 
-      // Enhanced materials display
       if (props.materials?.length > 0) {
         const materialContainer = this.createSectionContainer("Materials");
         props.materials.forEach((material: any) => {
@@ -132,7 +125,6 @@ export class PropertiesPanel {
         this.propertiesList.appendChild(materialContainer);
       }
 
-      // Improved quantities display
       if (props.quantities?.length > 0) {
         const quantityContainer = this.createSectionContainer("Quantities");
         props.quantities.forEach((qset: any) => {
