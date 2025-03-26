@@ -34,9 +34,22 @@ app.get("/api/graph", async (req, res) => {
 
     if (guid) {
       query = `
-        MATCH (n)-[r]-(adj)
-        WHERE n.GUID = $guid
-        RETURN n, r, adj
+        MATCH (start {GUID: $guid})
+
+        CALL {
+          WITH start
+          MATCH path = (start)-[:matchedArchetype*0..]-(archetypeNode)
+          WITH COLLECT(DISTINCT archetypeNode) AS matchedNodes
+          // Step 3: For each matched node, get its immediate neighbors
+          UNWIND matchedNodes AS mNode
+          MATCH (mNode)--(adjacent)
+          RETURN COLLECT(DISTINCT mNode) + COLLECT(DISTINCT adjacent) AS allNodes
+        }
+
+        UNWIND allNodes AS n
+        MATCH (n)-[r]->(m)
+        WHERE m IN allNodes
+        RETURN DISTINCT n, r, m
       `;
       parameters = { guid };
     } else {
@@ -50,35 +63,37 @@ app.get("/api/graph", async (req, res) => {
     const result = await session.run(query, parameters);
 
     const nodes = new Map();
-    const links = [];
+    const links = new Map();
+
+    const getLinkKey = (n, r, m) =>
+      `${n.identity.toString()}-${r.type}-${m.identity.toString()}`;
 
     result.records.forEach((record) => {
-      const startNode = record.get("n");
-      if (!nodes.has(startNode.identity.toString())) {
-        nodes.set(startNode.identity.toString(), {
-          id: startNode.identity.toString(),
-          labels: startNode.labels,
-          properties: startNode.properties,
-        });
+      const n = record.get("n");
+      const r = record.get("r");
+      const m = record.get("m");
+
+      if (!n || !r || !m) {
+        return;
       }
 
-      const rel = record.get("r");
-      const endNode = record.get(guid ? "adj" : "m");
-
-      if (rel && endNode) {
-        if (!nodes.has(endNode.identity.toString())) {
-          nodes.set(endNode.identity.toString(), {
-            id: endNode.identity.toString(),
-            labels: endNode.labels,
-            properties: endNode.properties,
+      [n, m].forEach((node) => {
+        if (!nodes.has(node.identity.toString())) {
+          nodes.set(node.identity.toString(), {
+            id: node.identity.toString(),
+            labels: node.labels,
+            properties: node.properties,
           });
         }
+      });
 
-        links.push({
-          source: startNode.identity.toString(),
-          target: endNode.identity.toString(),
-          type: rel.type,
-          properties: rel.properties,
+      const linkKey = getLinkKey(n, r, m);
+      if (!links.has(linkKey)) {
+        links.set(linkKey, {
+          source: n.identity.toString(),
+          target: m.identity.toString(),
+          type: r.type,
+          properties: r.properties,
         });
       }
     });
@@ -87,7 +102,7 @@ app.get("/api/graph", async (req, res) => {
       success: true,
       data: {
         nodes: Array.from(nodes.values()),
-        links,
+        links: Array.from(links.values()),
       },
     });
   } catch (error) {
