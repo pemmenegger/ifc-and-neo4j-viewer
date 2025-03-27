@@ -15,6 +15,7 @@ const MARKER_ID = "arrow";
 export class Neo4jViewer {
   private container: HTMLElement;
   private svgElement: SVGSVGElement;
+  private zoomBehavior: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null;
   private guid: string | null;
   private propertiesPanel: PropertiesPanel;
   private ifcViewer: IFCViewer | null = null;
@@ -58,6 +59,8 @@ export class Neo4jViewer {
   }
 
   private createForceGraph(data: GraphData) {
+    this.resetZoom();
+
     const svg = this.setupSvgCanvas();
     const g = svg.append("g");
     this.setupZoom(svg, g);
@@ -89,6 +92,15 @@ export class Neo4jViewer {
     return svg;
   }
 
+  private resetZoom() {
+    if (this.zoomBehavior) {
+      d3.select(this.svgElement)
+        .transition()
+        .duration(0)
+        .call(this.zoomBehavior.transform, d3.zoomIdentity);
+    }
+  }
+
   private defineLinkArrow(
     svg: d3.Selection<SVGSVGElement, unknown, null, undefined>
   ) {
@@ -114,12 +126,12 @@ export class Neo4jViewer {
     svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
     g: d3.Selection<SVGGElement, unknown, null, undefined>
   ) {
-    svg.call(
-      d3
-        .zoom<SVGSVGElement, unknown>()
-        .scaleExtent([0.1, 4])
-        .on("zoom", (event) => g.attr("transform", event.transform))
-    );
+    this.zoomBehavior = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 4])
+      .on("zoom", (event) => g.attr("transform", event.transform));
+
+    svg.call(this.zoomBehavior);
   }
 
   private setupSimulation(data: GraphData) {
