@@ -192,7 +192,14 @@ export class Neo4jViewer {
       .selectAll("g")
       .data(nodes)
       .enter()
-      .append("g");
+      .append("g")
+      .call(
+        d3
+          .drag<SVGGElement, Node>()
+          .on("start", this.dragstarted(simulation))
+          .on("drag", this.dragged)
+          .on("end", this.dragended(simulation))
+      );
 
     nodeGroup
       .append("circle")
@@ -201,13 +208,6 @@ export class Neo4jViewer {
       .attr("fill", getNodeColor)
       .attr("stroke", GREY)
       .attr("stroke-width", STROKE_WIDTH)
-      .call(
-        d3
-          .drag<SVGCircleElement, Node>()
-          .on("start", this.dragstarted(simulation))
-          .on("drag", this.dragged)
-          .on("end", this.dragended(simulation))
-      )
       .on("click", (event, d) => {
         event.stopPropagation();
         if (d.properties.GUID) {
@@ -257,21 +257,24 @@ export class Neo4jViewer {
   }
 
   private dragstarted(simulation: d3.Simulation<Node, Link>) {
-    return function (event: d3.D3DragEvent<SVGCircleElement, Node, Node>) {
+    return function (event: d3.D3DragEvent<SVGGElement, Node, Node>) {
       if (!event.active) simulation.alphaTarget(0.3).restart();
       event.subject.fx = event.subject.x;
       event.subject.fy = event.subject.y;
     };
   }
 
-  private dragged(event: d3.D3DragEvent<SVGCircleElement, Node, Node>) {
+  private dragged(event: d3.D3DragEvent<SVGGElement, Node, Node>) {
     event.subject.fx = event.x;
     event.subject.fy = event.y;
   }
 
   private dragended(simulation: d3.Simulation<Node, Link>) {
-    return function (event: d3.D3DragEvent<SVGCircleElement, Node, Node>) {
+    return function (event: d3.D3DragEvent<SVGGElement, Node, Node>) {
       if (!event.active) simulation.alphaTarget(0);
+      // Release the node so that the simulation can take over again
+      event.subject.fx = null;
+      event.subject.fy = null;
     };
   }
 
