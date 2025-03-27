@@ -100,7 +100,7 @@ export class Neo4jViewer {
       .append("marker")
       .attr("id", MARKER_ID)
       .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 43)
+      .attr("refX", NODE_RADIUS + 10)
       .attr("refY", 0)
       .attr("markerWidth", 6)
       .attr("markerHeight", 6)
@@ -133,10 +133,14 @@ export class Neo4jViewer {
         d3
           .forceLink<Node, Link>(data.links)
           .id((d) => d.id)
-          .distance(150)
+          .distance(170)
+          .strength(0.4)
       )
-      .force("charge", d3.forceManyBody().strength(-300))
-      .force("center", d3.forceCenter(width / 2, height / 2));
+      .force("charge", d3.forceManyBody().strength(-500))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("collision", d3.forceCollide().radius(NODE_RADIUS * 2.2))
+      .alphaDecay(0.02)
+      .velocityDecay(0.3);
   }
 
   private drawLinkPaths(
@@ -238,8 +242,8 @@ export class Neo4jViewer {
   }
 
   private updateGraphPositions(
-    linkPaths: d3.Selection<SVGTextElement, Link, SVGGElement, unknown>,
-    nodeGroup: d3.Selection<SVGCircleElement, Node, SVGGElement, unknown>
+    linkPaths: d3.Selection<SVGPathElement, Link, SVGGElement, unknown>,
+    nodeGroup: d3.Selection<SVGGElement, Node, SVGGElement, unknown>
   ) {
     linkPaths.attr("d", (d: any) => {
       const x1 = d.source.x;
@@ -268,8 +272,6 @@ export class Neo4jViewer {
   private dragended(simulation: d3.Simulation<Node, Link>) {
     return function (event: d3.D3DragEvent<SVGCircleElement, Node, Node>) {
       if (!event.active) simulation.alphaTarget(0);
-      event.subject.fx = null;
-      event.subject.fy = null;
     };
   }
 
