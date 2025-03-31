@@ -8,7 +8,7 @@ import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Sidebar } from "./components/Sidebar";
 import { SpatialTree } from "./components/SpatialTree";
 import { GeometryData, IFCModel, PlacedGeometry } from "./types";
-import { FilterPanel } from "./components/FilterPanel";
+import { IFCFilterPanel } from "./components/IFCFilterPanel";
 import { Neo4jViewer } from "./Neo4jViewer";
 
 export class IFCViewer {
@@ -33,7 +33,7 @@ export class IFCViewer {
   private isConnectionMode: boolean = false;
   private floatingMenu: FloatingMenu;
   private sidebar: Sidebar;
-  private filterPanel: FilterPanel;
+  private filterPanel: IFCFilterPanel;
   private pdfImagePaths: string[];
   private pdfPreviewWindow: HTMLDivElement;
   private lastHoveredModel: IFCModel | null = null;
@@ -77,7 +77,7 @@ export class IFCViewer {
     this.floatingMenu = new FloatingMenu(this);
     this.sidebar = new Sidebar(this);
     this.spatialTree = new SpatialTree(this);
-    this.filterPanel = new FilterPanel(this);
+    this.filterPanel = new IFCFilterPanel(this);
 
     // Initialize PDF preview window and PNG image paths.
     this.pdfImagePaths = ["/page_4_name_IW 3.1.png", "/page_3_name_AW 1.1.png"];
@@ -214,6 +214,7 @@ export class IFCViewer {
       let elementCount = 0;
       let geometryCount = 0;
 
+      const ifcTypes: Set<string> = new Set();
       this.ifcAPI.StreamAllMeshes(modelID, (mesh: any) => {
         const placedGeometries = mesh.geometries;
         const expressID = mesh.expressID;
@@ -221,6 +222,7 @@ export class IFCViewer {
         // Get the IFC type name
         const typeCode = this.ifcAPI.GetLineType(modelID, expressID);
         const ifcType = this.ifcAPI.GetNameFromTypeCode(typeCode);
+        if (ifcType) ifcTypes.add(ifcType);
         console.log(`Processing element ${expressID} of type ${ifcType}`);
 
         const elementGroup = this.createElementGroup(
@@ -302,7 +304,9 @@ export class IFCViewer {
 
       console.log("IFC file loaded successfully");
 
-      this.filterPanel.updateFilters();
+      this.filterPanel.updateFilters(
+        new Map(Array.from(ifcTypes).map((type) => [type, true]))
+      );
     } catch (error) {
       console.error("Error loading IFC file:", error);
       if (error instanceof Error) {

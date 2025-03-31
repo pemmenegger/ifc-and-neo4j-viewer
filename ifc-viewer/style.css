@@ -858,10 +858,17 @@
 }
 
 /* Filter Panel */
+#ifc-filter-panel > .filter-panel {
+  top: 20px;
+}
+
+#neo4j-filter-panel > .filter-panel {
+  top: calc(50vh + 20px);
+}
+
 .filter-panel {
   position: fixed;
   right: 340px;
-  top: 20px;
   width: 300px;
   background: #ffffff;
   border-radius: 8px;
