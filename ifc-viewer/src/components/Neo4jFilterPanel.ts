@@ -13,6 +13,6 @@ export class Neo4jFilterPanel extends FilterPanel {
     console.log("[Neo4jFilterPanel] Applying filters:", this.activeFilters);
 
     const shouldApply = this.activeFilters.has("Only Disassembly Graph");
-    this.viewer.toggleOnlyDissassemblyGraphFilter(shouldApply);
+    this.viewer.toggleOnlyDisassemblyGraphFilter(shouldApply);
   }
 }

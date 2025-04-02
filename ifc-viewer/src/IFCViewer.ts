@@ -968,7 +968,7 @@ export class IFCViewer {
     if (intersects.length > 0) {
       const intersect = intersects[0];
       this.picker.getGlobalId(intersect.object).then((globalId) => {
-        this.neo4jViewer.loadGraph(globalId);
+        this.neo4jViewer.loadSubgraph(globalId);
       });
     } else {
       this.neo4jViewer.loadGraph();

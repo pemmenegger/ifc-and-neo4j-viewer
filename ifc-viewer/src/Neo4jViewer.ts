@@ -4,12 +4,20 @@ import { GraphData, Node, Link } from "./types";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Neo4jFilterPanel } from "./components/Neo4jFilterPanel";
 
+const DARK_BLUE = "#63D8F2";
+const BLUE = "#63D8F2";
+const LIGHT_BLUE = "#63D8F2";
+const ORANGE = "#FF9800";
+const DARK_GREY = "#dcdcdc";
+const GREY = "#666";
+const LIGHT_GREY = "#f8f9fa";
+
 const SERVER_BASE_URL = "http://localhost:3001";
 const NODE_RADIUS = 30;
-const NODE_SELECTED_COLOR = "#ff9800";
-const NODE_SELECTABLE_COLOR = "#dcdcdc";
-const NODE_COLOR = "#f8f9fa";
-const GREY = "#666";
+const NODE_COLOR = LIGHT_GREY;
+const SELECTABLE_COLOR = DARK_GREY;
+const SELECTED_COLOR = ORANGE;
+const DISASSEMBLY_RELEVANT_COLOR = DARK_BLUE;
 const STROKE_WIDTH = 1.5;
 const MARKER_ID = "arrow";
 
@@ -17,11 +25,12 @@ export class Neo4jViewer {
   private container: HTMLElement;
   private svgElement: SVGSVGElement;
   private zoomBehavior: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null;
-  private fullGraphData: GraphData | null = null;
-  private selectedNodeGuid: string | null;
   private propertiesPanel: PropertiesPanel;
   private filterPanel: Neo4jFilterPanel;
   private ifcViewer: IFCViewer | null = null;
+  private currGraphData: GraphData | null = null;
+  private selectedNode: Node | null = null;
+  private dissassemblyRelevantGraphData: GraphData | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -30,7 +39,6 @@ export class Neo4jViewer {
       "svg"
     );
     this.container.appendChild(this.svgElement);
-    this.selectedNodeGuid = null;
     this.propertiesPanel = new PropertiesPanel("neo4j-properties-panel");
     this.filterPanel = new Neo4jFilterPanel(this);
   }
@@ -39,72 +47,65 @@ export class Neo4jViewer {
     this.ifcViewer = ifcViewer;
   }
 
-  public async loadGraph(
-    selectedNodeGuid: string | null = null,
-    force = false
-  ) {
-    if (!force && selectedNodeGuid === this.selectedNodeGuid) return;
-    this.selectedNodeGuid = selectedNodeGuid;
-    await this.fetchGraphData();
+  public async loadGraph() {
+    this.currGraphData = await this.fetchGraphData();
+    this.filterPanel.updateFilters(new Map([]));
+    this.createForceGraph();
+  }
+
+  public async loadSubgraph(nodeGuid: string) {
+    if (this.selectedNode && this.selectedNode.properties.GUID === nodeGuid)
+      return;
+    this.currGraphData = await this.fetchGraphData(nodeGuid);
     this.filterPanel.updateFilters(
       new Map([["Only Disassembly Graph", false]])
     );
+    this.setSelectedNode(nodeGuid);
+    this.setDissassemblyRelevantGraphData();
+    this.createForceGraph();
   }
 
-  private async fetchGraphData() {
+  private getNodeId(node: string | { id: string }) {
+    return typeof node === "string" ? node : node.id;
+  }
+
+  private async fetchGraphData(selectedNodeGuid: string | null = null) {
     try {
-      const url = this.selectedNodeGuid
-        ? `/api/graph?guid=${encodeURIComponent(this.selectedNodeGuid)}`
+      const url = selectedNodeGuid
+        ? `/api/graph?guid=${encodeURIComponent(selectedNodeGuid)}`
         : "/api/graph";
 
       const response = await fetch(`${SERVER_BASE_URL}${url}`);
       const result = await response.json();
 
       if (result.success && result.data) {
-        this.fullGraphData = result.data;
-        this.createForceGraph(result.data);
+        return result.data;
       }
     } catch (error) {
       console.error("Error fetching graph data:", error);
     }
   }
 
-  private getSelectedNode() {
-    if (!this.fullGraphData) return null;
-    return this.fullGraphData.nodes.find(
-      (node) => node.properties.GUID === this.selectedNodeGuid
+  private setSelectedNode(nodeGuid: string) {
+    this.selectedNode = this.currGraphData.nodes.find(
+      (node) => node.properties.GUID === nodeGuid
     );
   }
 
-  public toggleOnlyDissassemblyGraphFilter(shouldApply: boolean) {
-    if (!this.fullGraphData) return;
-
-    if (!shouldApply) {
-      this.createForceGraph(this.fullGraphData);
-      return;
-    }
-
-    if (!this.selectedNodeGuid) return;
-
-    const allLinks = new Set<Link>(
-      this.fullGraphData.links.filter((link) => link.source && link.target)
+  private setDissassemblyRelevantGraphData() {
+    const allValidLinks = new Set<Link>(
+      this.currGraphData.links.filter((link) => link.source && link.target)
     );
 
-    const selectedNode = this.getSelectedNode();
-    if (!selectedNode) return;
-
-    const getNodeId = (node: string | { id: string }) =>
-      typeof node === "string" ? node : node.id;
-
     const relevantLinks = new Set<Link>();
-    const relevantNodeIds = new Set<string>([selectedNode.id]);
+    const relevantNodeIds = new Set<string>([this.selectedNode.id]);
 
-    for (const link of allLinks) {
+    for (const link of allValidLinks) {
       if (
         link.type === "matchedArchetype" &&
-        getNodeId(link.source) === selectedNode.id
+        this.getNodeId(link.source) === this.selectedNode.id
       ) {
-        const targetId = getNodeId(link.target);
+        const targetId = this.getNodeId(link.target);
         relevantLinks.add(link);
         relevantNodeIds.add(targetId);
       }
@@ -114,12 +115,12 @@ export class Neo4jViewer {
     while (expanded) {
       expanded = false;
 
-      for (const link of allLinks) {
-        const sourceId = getNodeId(link.source);
-        const targetId = getNodeId(link.target);
+      for (const link of allValidLinks) {
+        const sourceId = this.getNodeId(link.source);
+        const targetId = this.getNodeId(link.target);
 
         if (
-          sourceId !== selectedNode.id &&
+          sourceId !== this.selectedNode.id &&
           relevantNodeIds.has(sourceId) &&
           !relevantNodeIds.has(targetId)
         ) {
@@ -127,13 +128,13 @@ export class Neo4jViewer {
           expanded = true;
 
           // Add all links connected to this new target node (excluding back to selectedNode)
-          for (const l of allLinks) {
-            const lSource = getNodeId(l.source);
-            const lTarget = getNodeId(l.target);
+          for (const l of allValidLinks) {
+            const lSource = this.getNodeId(l.source);
+            const lTarget = this.getNodeId(l.target);
 
             if (
-              (lSource === targetId && lTarget !== selectedNode.id) ||
-              (lTarget === targetId && lSource !== selectedNode.id)
+              (lSource === targetId && lTarget !== this.selectedNode.id) ||
+              (lTarget === targetId && lSource !== this.selectedNode.id)
             ) {
               relevantLinks.add(l);
             }
@@ -142,20 +143,54 @@ export class Neo4jViewer {
       }
     }
 
-    const filteredNodes = this.fullGraphData.nodes.filter((node) =>
+    const filteredNodes = this.currGraphData.nodes.filter((node) =>
       relevantNodeIds.has(node.id)
     );
-    if (!filteredNodes.includes(selectedNode)) {
-      filteredNodes.push(selectedNode);
+
+    if (!filteredNodes.includes(this.selectedNode)) {
+      filteredNodes.push(this.selectedNode);
     }
 
-    this.createForceGraph({
+    this.dissassemblyRelevantGraphData = {
       nodes: filteredNodes,
       links: Array.from(relevantLinks),
-    });
+    };
   }
 
-  private createForceGraph(data: GraphData) {
+  public toggleOnlyDisassemblyGraphFilter(shouldApply: boolean) {
+    if (!this.currGraphData || !this.dissassemblyRelevantGraphData) return;
+
+    const relevantNodeIds = new Set(
+      this.dissassemblyRelevantGraphData.nodes.map((node) => node.id)
+    );
+    const relevantLinks = new Set(
+      this.dissassemblyRelevantGraphData.links.map(
+        (link) =>
+          `${this.getNodeId(link.source)}-${this.getNodeId(link.target)}`
+      )
+    );
+
+    d3.select(this.svgElement)
+      .selectAll<SVGGElement, Node>("g.node-group > g.node")
+      .style("display", (d: any) =>
+        shouldApply ? (relevantNodeIds.has(d.id) ? null : "none") : null
+      );
+
+    d3.select(this.svgElement)
+      .selectAll<SVGGElement, Link>("g.link-group > g.link")
+      .style("display", (d: any) => {
+        const sourceId = this.getNodeId(d.source);
+        const targetId = this.getNodeId(d.target);
+        const linkKey = `${sourceId}-${targetId}`;
+        return shouldApply
+          ? relevantLinks.has(linkKey)
+            ? null
+            : "none"
+          : null;
+      });
+  }
+
+  private createForceGraph() {
     this.resetZoom();
 
     const svg = this.setupSvgCanvas();
@@ -163,15 +198,18 @@ export class Neo4jViewer {
     this.setupZoom(svg, g);
     this.defineLinkArrow(svg);
 
-    const simulation = this.setupSimulation(data);
-    const linkPaths = this.drawLinkPaths(g, data.links);
-    const nodeGroup = this.drawNodeGroup(g, data.nodes, simulation);
+    const simulation = this.setupSimulation(this.currGraphData);
+    const linkPaths = this.drawLinkPaths(g, this.currGraphData.links);
+    const nodeGroup = this.drawNodeGroup(
+      g,
+      this.currGraphData.nodes,
+      simulation
+    );
     simulation.on("tick", () => {
       this.updateGraphPositions(linkPaths, nodeGroup);
     });
 
-    const selectedNode = this.getSelectedNode();
-    this.selectNode(selectedNode);
+    this.selectNode(this.selectedNode);
   }
 
   private setupSvgCanvas() {
@@ -196,16 +234,33 @@ export class Neo4jViewer {
     }
   }
 
+  private isLinkSelectable(d: Link) {
+    return d.properties && Object.keys(d.properties).length > 0;
+  }
+
   private defineLinkArrow(
     svg: d3.Selection<SVGSVGElement, unknown, null, undefined>
   ) {
-    svg
-      .append("defs")
-      .selectAll("marker")
-      .data(["end"])
-      .enter()
+    const defs = svg.append("defs");
+
+    // Marker for selectable links
+    defs
       .append("marker")
-      .attr("id", MARKER_ID)
+      .attr("id", `${MARKER_ID}-selectable`)
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", NODE_RADIUS + 10)
+      .attr("refY", 0)
+      .attr("markerWidth", 6)
+      .attr("markerHeight", 6)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", DISASSEMBLY_RELEVANT_COLOR);
+
+    // Marker for non-selectable links
+    defs
+      .append("marker")
+      .attr("id", `${MARKER_ID}-default`)
       .attr("viewBox", "0 -5 10 10")
       .attr("refX", NODE_RADIUS + 10)
       .attr("refY", 0)
@@ -240,7 +295,7 @@ export class Neo4jViewer {
         d3
           .forceLink<Node, Link>(data.links)
           .id((d) => d.id)
-          .distance(160)
+          .distance(180)
           .strength(0.7)
       )
       .force("charge", d3.forceManyBody().strength(-450))
@@ -258,24 +313,54 @@ export class Neo4jViewer {
   ) {
     const linkGroup = g
       .append("g")
+      .attr("class", "link-group")
       .selectAll("g")
       .data(links)
       .enter()
-      .append("g");
+      .append("g")
+      .attr("class", "link")
+      .on("click", (event, d) => {
+        event.stopPropagation();
+        if (isLinkSelectable(d)) {
+          this.propertiesPanel.displayElementProperties({
+            elementInfo: d.properties || {},
+          });
+        }
+      })
+      .on("mouseover", function (event, d) {
+        if (isLinkSelectable(d)) {
+          d3.select(this).style("cursor", "pointer");
+        }
+      })
+      .on("mouseout", function (event, d) {
+        d3.select(this).style("cursor", "default");
+      });
+
+    const isLinkSelectable = (d: Link) => {
+      return this.isLinkSelectable(d);
+    };
 
     const linkPaths = linkGroup
       .append("path")
       .attr("fill", "none")
-      .attr("stroke", GREY)
+      .attr("stroke", (d: Link) =>
+        isLinkSelectable(d) ? DISASSEMBLY_RELEVANT_COLOR : GREY
+      )
       .attr("stroke-width", STROKE_WIDTH)
-      .attr("marker-end", `url(#${MARKER_ID})`)
+      .attr("marker-end", (d: Link) =>
+        isLinkSelectable(d)
+          ? `url(#${MARKER_ID}-selectable)`
+          : `url(#${MARKER_ID}-default)`
+      )
       .attr("id", (_, i) => `link-path-${i}`);
 
     linkGroup
       .append("text")
       .attr("dy", -3)
       .attr("font-size", 10)
-      .attr("fill", GREY)
+      .attr("fill", (d: Link) =>
+        isLinkSelectable(d) ? DISASSEMBLY_RELEVANT_COLOR : GREY
+      )
       .append("textPath")
       .attr("startOffset", "50%")
       .attr("xlink:href", (_, i) => `#link-path-${i}`)
@@ -290,29 +375,39 @@ export class Neo4jViewer {
     nodes: Node[],
     simulation: d3.Simulation<Node, Link>
   ) {
+    const relevantNodeIds = new Set(
+      this.dissassemblyRelevantGraphData?.nodes.map((n) => n.id)
+    );
+
     const getNodeColor = (d: Node): string => {
-      if (d.properties.GUID === this.selectedNodeGuid)
-        return NODE_SELECTED_COLOR;
-      if (d.properties.GUID) return NODE_SELECTABLE_COLOR;
+      if (
+        this.selectedNode &&
+        d.properties.GUID === this.selectedNode.properties.GUID
+      )
+        return SELECTED_COLOR;
+      if (relevantNodeIds.has(d.id)) return DISASSEMBLY_RELEVANT_COLOR;
+      if (d.properties.GUID) return SELECTABLE_COLOR;
       return NODE_COLOR;
     };
 
     const nodeGroup = g
       .append("g")
+      .attr("class", "node-group")
       .selectAll("g")
       .data(nodes)
       .enter()
       .append("g")
+      .attr("class", "node")
       .on("click", (event, d) => {
         event.stopPropagation();
         this.selectNode(d);
         if (d.properties.GUID) {
-          this.loadGraph(d.properties.GUID);
+          this.loadSubgraph(d.properties.GUID);
         }
       })
       .on("mouseover", function (event, d) {
         d3.select(this)
-          .attr("fill", d.properties.GUID ? NODE_SELECTED_COLOR : NODE_COLOR)
+          .attr("fill", d.properties.GUID ? SELECTABLE_COLOR : NODE_COLOR)
           .style("cursor", "pointer");
       })
       .on("mouseout", function (event, d) {
@@ -400,9 +495,9 @@ export class Neo4jViewer {
     if (node.properties.GUID)
       this.ifcViewer.selectElementByGUID(node.properties.GUID);
 
-    d3.selectAll("circle.node").attr("stroke-width", 1);
-    d3.selectAll("circle.node")
-      .filter((d: any) => d.id === node.id)
-      .attr("stroke-width", 2);
+    // d3.selectAll("circle.node").attr("stroke-width", 1);
+    // d3.selectAll("circle.node")
+    //   .filter((d: any) => d.id === node.id)
+    //   .attr("stroke-width", 2);
   }
 }
