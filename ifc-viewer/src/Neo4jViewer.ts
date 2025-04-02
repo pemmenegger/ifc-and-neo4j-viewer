@@ -18,7 +18,7 @@ export class Neo4jViewer {
   private svgElement: SVGSVGElement;
   private zoomBehavior: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null;
   private fullGraphData: GraphData | null = null;
-  private guid: string | null;
+  private selectedNodeGuid: string | null;
   private propertiesPanel: PropertiesPanel;
   private filterPanel: Neo4jFilterPanel;
   private ifcViewer: IFCViewer | null = null;
@@ -30,7 +30,7 @@ export class Neo4jViewer {
       "svg"
     );
     this.container.appendChild(this.svgElement);
-    this.guid = null;
+    this.selectedNodeGuid = null;
     this.propertiesPanel = new PropertiesPanel("neo4j-properties-panel");
     this.filterPanel = new Neo4jFilterPanel(this);
   }
@@ -39,9 +39,12 @@ export class Neo4jViewer {
     this.ifcViewer = ifcViewer;
   }
 
-  public async loadGraph(guid: string | null = null, force = false) {
-    if (!force && guid === this.guid) return;
-    this.guid = guid;
+  public async loadGraph(
+    selectedNodeGuid: string | null = null,
+    force = false
+  ) {
+    if (!force && selectedNodeGuid === this.selectedNodeGuid) return;
+    this.selectedNodeGuid = selectedNodeGuid;
     await this.fetchGraphData();
     this.filterPanel.updateFilters(
       new Map([["Only Disassembly Graph", false]])
@@ -50,8 +53,8 @@ export class Neo4jViewer {
 
   private async fetchGraphData() {
     try {
-      const url = this.guid
-        ? `/api/graph?guid=${encodeURIComponent(this.guid)}`
+      const url = this.selectedNodeGuid
+        ? `/api/graph?guid=${encodeURIComponent(this.selectedNodeGuid)}`
         : "/api/graph";
 
       const response = await fetch(`${SERVER_BASE_URL}${url}`);
@@ -66,6 +69,13 @@ export class Neo4jViewer {
     }
   }
 
+  private getSelectedNode() {
+    if (!this.fullGraphData) return null;
+    return this.fullGraphData.nodes.find(
+      (node) => node.properties.GUID === this.selectedNodeGuid
+    );
+  }
+
   public toggleOnlyDissassemblyGraphFilter(shouldApply: boolean) {
     if (!this.fullGraphData) return;
 
@@ -74,24 +84,13 @@ export class Neo4jViewer {
       return;
     }
 
-    if (!this.guid) return;
-
-    const svg = d3.select(this.svgElement);
-
-    const allNodes = new Set<Node>(
-      svg.selectAll<SVGGElement, Node>("g > g > circle").data()
-    );
+    if (!this.selectedNodeGuid) return;
 
     const allLinks = new Set<Link>(
-      svg
-        .selectAll<SVGPathElement, Link>("path")
-        .data()
-        .filter((link) => link.source && link.target)
+      this.fullGraphData.links.filter((link) => link.source && link.target)
     );
 
-    const selectedNode = Array.from(allNodes).find(
-      (node) => node.properties.GUID === this.guid
-    );
+    const selectedNode = this.getSelectedNode();
     if (!selectedNode) return;
 
     const getNodeId = (node: string | { id: string }) =>
@@ -143,7 +142,7 @@ export class Neo4jViewer {
       }
     }
 
-    const filteredNodes = Array.from(allNodes).filter((node) =>
+    const filteredNodes = this.fullGraphData.nodes.filter((node) =>
       relevantNodeIds.has(node.id)
     );
     if (!filteredNodes.includes(selectedNode)) {
@@ -171,9 +170,7 @@ export class Neo4jViewer {
       this.updateGraphPositions(linkPaths, nodeGroup);
     });
 
-    const selectedNode = data.nodes.find(
-      (node) => node.properties.GUID === this.guid
-    );
+    const selectedNode = this.getSelectedNode();
     this.selectNode(selectedNode);
   }
 
@@ -243,14 +240,16 @@ export class Neo4jViewer {
         d3
           .forceLink<Node, Link>(data.links)
           .id((d) => d.id)
-          .distance(170)
-          .strength(0.4)
+          .distance(160)
+          .strength(0.7)
       )
-      .force("charge", d3.forceManyBody().strength(-500))
+      .force("charge", d3.forceManyBody().strength(-450))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collision", d3.forceCollide().radius(NODE_RADIUS * 2.2))
-      .alphaDecay(0.02)
-      .velocityDecay(0.3);
+      .alpha(1)
+      .alphaDecay(0.025)
+      .alphaMin(0.001)
+      .velocityDecay(0.35);
   }
 
   private drawLinkPaths(
@@ -292,7 +291,8 @@ export class Neo4jViewer {
     simulation: d3.Simulation<Node, Link>
   ) {
     const getNodeColor = (d: Node): string => {
-      if (d.properties.GUID === this.guid) return NODE_SELECTED_COLOR;
+      if (d.properties.GUID === this.selectedNodeGuid)
+        return NODE_SELECTED_COLOR;
       if (d.properties.GUID) return NODE_SELECTABLE_COLOR;
       return NODE_COLOR;
     };
@@ -303,6 +303,21 @@ export class Neo4jViewer {
       .data(nodes)
       .enter()
       .append("g")
+      .on("click", (event, d) => {
+        event.stopPropagation();
+        this.selectNode(d);
+        if (d.properties.GUID) {
+          this.loadGraph(d.properties.GUID);
+        }
+      })
+      .on("mouseover", function (event, d) {
+        d3.select(this)
+          .attr("fill", d.properties.GUID ? NODE_SELECTED_COLOR : NODE_COLOR)
+          .style("cursor", "pointer");
+      })
+      .on("mouseout", function (event, d) {
+        d3.select(this).attr("fill", getNodeColor(d));
+      })
       .call(
         d3
           .drag<SVGGElement, Node>()
@@ -317,29 +332,13 @@ export class Neo4jViewer {
       .attr("r", NODE_RADIUS)
       .attr("fill", getNodeColor)
       .attr("stroke", GREY)
-      .attr("stroke-width", STROKE_WIDTH)
-      .on("click", (event, d) => {
-        event.stopPropagation();
-        if (d.properties.GUID) {
-          this.loadGraph(d.properties.GUID);
-        }
-        this.selectNode(d);
-      })
-      .on("mouseover", function (event, d) {
-        d3.select(this)
-          .attr("fill", d.properties.GUID ? NODE_SELECTED_COLOR : NODE_COLOR)
-          .style("cursor", "pointer");
-      })
-      .on("mouseout", function (event, d) {
-        d3.select(this).attr("fill", getNodeColor(d));
-      });
+      .attr("stroke-width", STROKE_WIDTH);
 
     nodeGroup
       .append("text")
       .attr("class", "label")
       .attr("font-size", 10)
       .attr("fill", "#000")
-      .attr("pointer-events", "none")
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle")
       .text((d) => {
@@ -400,5 +399,10 @@ export class Neo4jViewer {
 
     if (node.properties.GUID)
       this.ifcViewer.selectElementByGUID(node.properties.GUID);
+
+    d3.selectAll("circle.node").attr("stroke-width", 1);
+    d3.selectAll("circle.node")
+      .filter((d: any) => d.id === node.id)
+      .attr("stroke-width", 2);
   }
 }
