@@ -1,68 +1,18 @@
+import { TogglingPanel } from "./TogglingPanel";
+
 export abstract class FilterPanel {
-  protected panel!: HTMLElement | null;
-  protected container!: HTMLElement | null;
-  protected content!: HTMLElement | null;
+  protected togglingPanel: TogglingPanel;
   protected activeFilters: Set<string>;
 
   constructor(panelId: string, propertiesPanelId: string) {
-    this.setupPanel(panelId);
-    this.setupPanelCollapseObserver(propertiesPanelId);
+    this.togglingPanel = new TogglingPanel(panelId);
     this.activeFilters = new Set();
-  }
 
-  private setupPanel(panelId: string): void {
-    this.panel = document.querySelector(`#${panelId}`);
-    if (!this.panel) {
-      console.error("Failed to find filter panel with ID:", panelId);
-      return;
-    }
-
-    this.container = this.panel.querySelector(".filter-panel");
-    if (!this.container) {
-      console.error("Failed to find filter panel container with ID:", panelId);
-      return;
-    }
-
-    this.content = this.panel.querySelector(".filter-content");
-    if (!this.content) {
-      console.error("Failed to find filter panel content with ID:", panelId);
-      return;
-    }
-
-    const toggleBtn = this.panel.querySelector(
-      ".filter-toggle"
-    ) as HTMLButtonElement;
-    if (!toggleBtn) {
-      console.error(
-        "Failed to find filter panel toggle button with ID:",
-        panelId
-      );
-      return;
-    }
-
-    toggleBtn.addEventListener("click", () => {
-      this.container.classList.toggle("collapsed");
-    });
-  }
-
-  private setupPanelCollapseObserver(propertiesPanelId: string): void {
-    const propertiesPanel = document.querySelector(
-      `#${propertiesPanelId} > .properties-panel
-    `
-    );
-    if (!propertiesPanel) {
-      console.error("Failed to find properties panel");
-      return;
-    }
-
-    const observer = new MutationObserver(() => {
-      const isCollapsed = propertiesPanel.classList.contains("collapsed");
-      this.container.style.right = isCollapsed ? "60px" : "340px";
-    });
-
-    observer.observe(propertiesPanel, {
-      attributes: true,
-      attributeFilter: ["class"],
+    this.togglingPanel.observeCollapseOf(propertiesPanelId, (isCollapsed) => {
+      const container = this.togglingPanel.getContainer();
+      if (container) {
+        container.style.right = isCollapsed ? "60px" : "340px";
+      }
     });
   }
 
@@ -106,14 +56,17 @@ export abstract class FilterPanel {
 
   public updateFilters(data: Map<string, boolean>): void {
     console.log("[FilterPanel] Updating filters:", data);
-    this.content.innerHTML = "";
+    const content = this.togglingPanel.getContent();
+    if (!content) return;
+
+    content.innerHTML = "";
     this.activeFilters.clear();
 
     Array.from(data.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .forEach(([className, isChecked]) => {
         const item = this.createFilterItem(className, isChecked);
-        this.content.appendChild(item);
+        content.appendChild(item);
       });
 
     this.applyFilters();

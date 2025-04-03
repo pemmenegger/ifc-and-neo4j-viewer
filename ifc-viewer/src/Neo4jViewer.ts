@@ -3,23 +3,80 @@ import { IFCViewer } from "./IFCViewer";
 import { GraphData, Node, Link } from "./types";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Neo4jFilterPanel } from "./components/Neo4jFilterPanel";
+import { TogglingPanel } from "./components/TogglingPanel";
+import { title } from "process";
 
-const DARK_BLUE = "#63D8F2";
-const BLUE = "#63D8F2";
-const LIGHT_BLUE = "#63D8F2";
+const BLUE_DARK = "#0f5e82";
+const BLUE_MEDIUM = "#1c9ede";
+const BLUE_LIGHT = "#a0d8f3";
+const BLUE_LIGHTER = "#cdeaf8";
 const ORANGE = "#FF9800";
-const DARK_GREY = "#dcdcdc";
-const GREY = "#666";
-const LIGHT_GREY = "#f8f9fa";
+const GREY_DARK = "#dcdcdc";
+const GREY_MEDIUM = "#666";
+const GREY_LIGHT = "#f8f9fa";
+const WHITE = "#ffffff";
 
 const SERVER_BASE_URL = "http://localhost:3001";
 const NODE_RADIUS = 30;
-const NODE_COLOR = LIGHT_GREY;
-const SELECTABLE_COLOR = DARK_GREY;
-const SELECTED_COLOR = ORANGE;
-const DISASSEMBLY_RELEVANT_COLOR = DARK_BLUE;
+
+const NODE_THEMES = {
+  IFC_MATERIAL: {
+    background: GREY_LIGHT,
+    text: GREY_MEDIUM,
+    title: "Ifc Material",
+  },
+  IFC_ELEMENT: {
+    background: GREY_DARK,
+    text: GREY_MEDIUM,
+    title: "Ifc Element",
+  },
+  SELECTED_IFC_ELEMENT: {
+    background: ORANGE,
+    text: GREY_MEDIUM,
+    title: "Selected Ifc Element",
+  },
+  ARCHETYPE_ELEMENT: {
+    background: BLUE_DARK,
+    text: WHITE,
+    title: "Archetype",
+  },
+  LAYER_COMPOSITE: {
+    background: BLUE_MEDIUM,
+    text: GREY_MEDIUM,
+    title: "Layer Composite",
+  },
+  COMPONENT: {
+    background: BLUE_LIGHT,
+    text: GREY_MEDIUM,
+    title: "Component",
+  },
+};
+
+const NODE_BORDER_COLOR = GREY_MEDIUM;
+const CONNECTED_COMPONENT_LINK_COLOR = BLUE_DARK;
+const LINK_COLOR = GREY_MEDIUM;
+
 const STROKE_WIDTH = 1.5;
 const MARKER_ID = "arrow";
+
+const getNodeTheme = (d: Node) => {
+  const label = d.labels[0];
+  if (label === "IfcMaterial") return NODE_THEMES.IFC_MATERIAL;
+  else if (label.startsWith("Ifc")) return NODE_THEMES.IFC_ELEMENT;
+  else if (label === "Archetype") return NODE_THEMES.ARCHETYPE_ELEMENT;
+  else if (label === "Layercomposite") return NODE_THEMES.LAYER_COMPOSITE;
+  else if (label === "Component") return NODE_THEMES.COMPONENT;
+  else if (label === "Material") {
+    return {
+      background: BLUE_LIGHTER,
+      text: GREY_MEDIUM,
+    };
+  } else
+    return {
+      background: GREY_LIGHT,
+      text: GREY_MEDIUM,
+    };
+};
 
 export class Neo4jViewer {
   private container: HTMLElement;
@@ -41,6 +98,24 @@ export class Neo4jViewer {
     this.container.appendChild(this.svgElement);
     this.propertiesPanel = new PropertiesPanel("neo4j-properties-panel");
     this.filterPanel = new Neo4jFilterPanel(this);
+    const legendPanel = new TogglingPanel("neo4j-legend-panel");
+    const legendContent = legendPanel.getContent();
+
+    const generateLegendItem = (color: string, label: string): string => {
+      return `
+        <div class="legend-item">
+          <span class="color-dot" style="background-color: ${color}"></span>
+          <span>${label}</span>
+        </div>
+      `;
+    };
+
+    const themesArray = Object.values(NODE_THEMES);
+    themesArray.forEach((theme) => {
+      const color = theme.background;
+      const label = theme.title;
+      legendContent.innerHTML += generateLegendItem(color, label);
+    });
   }
 
   public setIfcViewer(ifcViewer: IFCViewer) {
@@ -127,7 +202,25 @@ export class Neo4jViewer {
           relevantNodeIds.add(targetId);
           expanded = true;
 
-          // Add all links connected to this new target node (excluding back to selectedNode)
+          for (const l of allValidLinks) {
+            const lSource = this.getNodeId(l.source);
+            const lTarget = this.getNodeId(l.target);
+
+            if (
+              (lSource === targetId && lTarget !== this.selectedNode.id) ||
+              (lTarget === targetId && lSource !== this.selectedNode.id)
+            ) {
+              relevantLinks.add(l);
+            }
+          }
+        } else if (
+          targetId !== this.selectedNode.id &&
+          relevantNodeIds.has(targetId) &&
+          !relevantNodeIds.has(sourceId)
+        ) {
+          relevantNodeIds.add(sourceId);
+          expanded = true;
+
           for (const l of allValidLinks) {
             const lSource = this.getNodeId(l.source);
             const lTarget = this.getNodeId(l.target);
@@ -255,7 +348,7 @@ export class Neo4jViewer {
       .attr("orient", "auto")
       .append("path")
       .attr("d", "M0,-5L10,0L0,5")
-      .attr("fill", DISASSEMBLY_RELEVANT_COLOR);
+      .attr("fill", CONNECTED_COMPONENT_LINK_COLOR);
 
     // Marker for non-selectable links
     defs
@@ -269,7 +362,7 @@ export class Neo4jViewer {
       .attr("orient", "auto")
       .append("path")
       .attr("d", "M0,-5L10,0L0,5")
-      .attr("fill", GREY);
+      .attr("fill", LINK_COLOR);
   }
 
   private setupZoom(
@@ -344,7 +437,7 @@ export class Neo4jViewer {
       .append("path")
       .attr("fill", "none")
       .attr("stroke", (d: Link) =>
-        isLinkSelectable(d) ? DISASSEMBLY_RELEVANT_COLOR : GREY
+        isLinkSelectable(d) ? CONNECTED_COMPONENT_LINK_COLOR : LINK_COLOR
       )
       .attr("stroke-width", STROKE_WIDTH)
       .attr("marker-end", (d: Link) =>
@@ -359,7 +452,7 @@ export class Neo4jViewer {
       .attr("dy", -3)
       .attr("font-size", 10)
       .attr("fill", (d: Link) =>
-        isLinkSelectable(d) ? DISASSEMBLY_RELEVANT_COLOR : GREY
+        isLinkSelectable(d) ? CONNECTED_COMPONENT_LINK_COLOR : LINK_COLOR
       )
       .append("textPath")
       .attr("startOffset", "50%")
@@ -379,15 +472,13 @@ export class Neo4jViewer {
       this.dissassemblyRelevantGraphData?.nodes.map((n) => n.id)
     );
 
-    const getNodeColor = (d: Node): string => {
+    const getNodeThemeInternal = (d: Node) => {
       if (
         this.selectedNode &&
         d.properties.GUID === this.selectedNode.properties.GUID
       )
-        return SELECTED_COLOR;
-      if (relevantNodeIds.has(d.id)) return DISASSEMBLY_RELEVANT_COLOR;
-      if (d.properties.GUID) return SELECTABLE_COLOR;
-      return NODE_COLOR;
+        return NODE_THEMES.SELECTED_IFC_ELEMENT;
+      return getNodeTheme(d);
     };
 
     const nodeGroup = g
@@ -407,11 +498,16 @@ export class Neo4jViewer {
       })
       .on("mouseover", function (event, d) {
         d3.select(this)
-          .attr("fill", d.properties.GUID ? SELECTABLE_COLOR : NODE_COLOR)
+          .attr(
+            "fill",
+            d.properties.GUID
+              ? NODE_THEMES.IFC_ELEMENT.background
+              : NODE_THEMES.IFC_MATERIAL.background
+          )
           .style("cursor", "pointer");
       })
       .on("mouseout", function (event, d) {
-        d3.select(this).attr("fill", getNodeColor(d));
+        d3.select(this).attr("fill", getNodeThemeInternal(d).background);
       })
       .call(
         d3
@@ -425,15 +521,15 @@ export class Neo4jViewer {
       .append("circle")
       .attr("class", "node")
       .attr("r", NODE_RADIUS)
-      .attr("fill", getNodeColor)
-      .attr("stroke", GREY)
+      .attr("fill", (d: Node) => getNodeThemeInternal(d).background)
+      .attr("stroke", NODE_BORDER_COLOR)
       .attr("stroke-width", STROKE_WIDTH);
 
     nodeGroup
       .append("text")
       .attr("class", "label")
       .attr("font-size", 10)
-      .attr("fill", "#000")
+      .attr("fill", (d: Node) => getNodeThemeInternal(d).text)
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle")
       .text((d) => {

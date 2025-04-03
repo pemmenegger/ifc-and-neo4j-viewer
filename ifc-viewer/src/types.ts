@@ -75,6 +75,7 @@ export interface Node {
   properties: Record<string, any>;
   x: number;
   y: number;
+  disassemblyLevel?: number;
 }
 
 export interface Link {

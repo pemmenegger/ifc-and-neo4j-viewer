@@ -38,16 +38,15 @@ app.get("/api/graph", async (req, res) => {
 
         CALL {
           WITH start
-          MATCH path = (start)-[:matchedArchetype*0..]-(archetypeNode)
-          WITH COLLECT(DISTINCT archetypeNode) AS matchedNodes
-          // Step 3: For each matched node, get its immediate neighbors
+          MATCH (start)-[:matchedArchetype]-(mNode)
+          WITH COLLECT(DISTINCT mNode) AS matchedNodes
           UNWIND matchedNodes AS mNode
-          MATCH (mNode)--(adjacent)
+          MATCH (mNode)-[*1..2]-(adjacent)
           RETURN COLLECT(DISTINCT mNode) + COLLECT(DISTINCT adjacent) AS allNodes
         }
 
         UNWIND allNodes AS n
-        MATCH (n)-[r]->(m)
+        MATCH (n)-[r]->(m)  // Use undirected match to capture both directions
         WHERE m IN allNodes
         RETURN DISTINCT n, r, m
       `;
