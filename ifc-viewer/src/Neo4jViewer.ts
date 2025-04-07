@@ -4,7 +4,6 @@ import { GraphData, Node, Link } from "./types";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { Neo4jFilterPanel } from "./components/Neo4jFilterPanel";
 import { TogglingPanel } from "./components/TogglingPanel";
-import { title } from "process";
 
 const BLUE_DARK = "#0f5e82";
 const BLUE_MEDIUM = "#1c9ede";
@@ -87,7 +86,8 @@ export class Neo4jViewer {
   private ifcViewer: IFCViewer | null = null;
   private currGraphData: GraphData | null = null;
   private selectedNode: Node | null = null;
-  private dissassemblyRelevantGraphData: GraphData | null = null;
+  private disassemblyRelevantGraphData: GraphData | null = null;
+  private ifcRelevantGraphData: GraphData | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -133,10 +133,13 @@ export class Neo4jViewer {
       return;
     this.currGraphData = await this.fetchGraphData(nodeGuid);
     this.filterPanel.updateFilters(
-      new Map([["Only Disassembly Graph", false]])
+      new Map([
+        ["Only Disassembly Graph", false],
+        ["Only IFC Graph", false],
+      ])
     );
     this.setSelectedNode(nodeGuid);
-    this.setDissassemblyRelevantGraphData();
+    this.setRelevantGraphData();
     this.createForceGraph();
   }
 
@@ -167,7 +170,7 @@ export class Neo4jViewer {
     );
   }
 
-  private setDissassemblyRelevantGraphData() {
+  private setRelevantGraphData() {
     const allValidLinks = new Set<Link>(
       this.currGraphData.links.filter((link) => link.source && link.target)
     );
@@ -236,32 +239,116 @@ export class Neo4jViewer {
       }
     }
 
-    const filteredNodes = this.currGraphData.nodes.filter((node) =>
+    const disassemblyRelevantNodes = this.currGraphData.nodes.filter((node) =>
       relevantNodeIds.has(node.id)
     );
 
-    if (!filteredNodes.includes(this.selectedNode)) {
-      filteredNodes.push(this.selectedNode);
+    if (!disassemblyRelevantNodes.find((n) => n.id === this.selectedNode.id)) {
+      disassemblyRelevantNodes.push(this.selectedNode);
     }
 
-    this.dissassemblyRelevantGraphData = {
-      nodes: filteredNodes,
+    this.disassemblyRelevantGraphData = {
+      nodes: disassemblyRelevantNodes,
       links: Array.from(relevantLinks),
     };
-  }
 
-  public toggleOnlyDisassemblyGraphFilter(shouldApply: boolean) {
-    if (!this.currGraphData || !this.dissassemblyRelevantGraphData) return;
-
-    const relevantNodeIds = new Set(
-      this.dissassemblyRelevantGraphData.nodes.map((node) => node.id)
+    const disassemblyNodeIds = new Set(
+      this.disassemblyRelevantGraphData.nodes.map((node) => node.id)
     );
-    const relevantLinks = new Set(
-      this.dissassemblyRelevantGraphData.links.map(
+
+    const ifcRelevantNodes = this.currGraphData.nodes.filter(
+      (node) => !disassemblyNodeIds.has(node.id)
+    );
+    ifcRelevantNodes.push(this.selectedNode);
+
+    const disassemblyLinkKeys = new Set(
+      this.disassemblyRelevantGraphData.links.map(
         (link) =>
           `${this.getNodeId(link.source)}-${this.getNodeId(link.target)}`
       )
     );
+
+    const ifcRelevantLinks = this.currGraphData.links.filter((link) => {
+      const linkKey = `${this.getNodeId(link.source)}-${this.getNodeId(
+        link.target
+      )}`;
+      return !disassemblyLinkKeys.has(linkKey);
+    });
+
+    console.log(
+      "IFC Nodes",
+      ifcRelevantNodes.map((n) => n.id)
+    );
+    console.log(
+      "Disassembly Nodes",
+      this.disassemblyRelevantGraphData.nodes.map((n) => n.id)
+    );
+    console.log(
+      "Overlap",
+      ifcRelevantNodes.filter((n) =>
+        this.disassemblyRelevantGraphData.nodes.includes(n)
+      )
+    );
+
+    this.ifcRelevantGraphData = {
+      nodes: ifcRelevantNodes,
+      links: ifcRelevantLinks,
+    };
+  }
+
+  public toggleOnlyDisassemblyGraphFilter(shouldApply: boolean) {
+    if (!this.currGraphData || !this.disassemblyRelevantGraphData) return;
+
+    const relevantNodeIds = new Set(
+      this.disassemblyRelevantGraphData.nodes.map((node) => node.id)
+    );
+    const relevantLinks = new Set(
+      this.disassemblyRelevantGraphData.links.map(
+        (link) =>
+          `${this.getNodeId(link.source)}-${this.getNodeId(link.target)}`
+      )
+    );
+
+    console.log("toggleOnlyDisassemblyGraphFilter", relevantNodeIds);
+    console.log("toggleOnlyDisassemblyGraphFilter", relevantLinks);
+    console.log("shouldApply", shouldApply);
+
+    d3.select(this.svgElement)
+      .selectAll<SVGGElement, Node>("g.node-group > g.node")
+      .style("display", (d: any) =>
+        shouldApply ? (relevantNodeIds.has(d.id) ? null : "none") : null
+      );
+
+    d3.select(this.svgElement)
+      .selectAll<SVGGElement, Link>("g.link-group > g.link")
+      .style("display", (d: any) => {
+        const sourceId = this.getNodeId(d.source);
+        const targetId = this.getNodeId(d.target);
+        const linkKey = `${sourceId}-${targetId}`;
+        return shouldApply
+          ? relevantLinks.has(linkKey)
+            ? null
+            : "none"
+          : null;
+      });
+  }
+
+  public toggleOnlyIFCGraphFilter(shouldApply: boolean) {
+    if (!this.currGraphData || !this.ifcRelevantGraphData) return;
+
+    const relevantNodeIds = new Set(
+      this.ifcRelevantGraphData.nodes.map((node) => node.id)
+    );
+    const relevantLinks = new Set(
+      this.ifcRelevantGraphData.links.map(
+        (link) =>
+          `${this.getNodeId(link.source)}-${this.getNodeId(link.target)}`
+      )
+    );
+
+    console.log("toggleOnlyIFCGraphFilter", relevantNodeIds);
+    console.log("toggleOnlyIFCGraphFilter", relevantLinks);
+    console.log("shouldApply", shouldApply);
 
     d3.select(this.svgElement)
       .selectAll<SVGGElement, Node>("g.node-group > g.node")
@@ -469,7 +556,7 @@ export class Neo4jViewer {
     simulation: d3.Simulation<Node, Link>
   ) {
     const relevantNodeIds = new Set(
-      this.dissassemblyRelevantGraphData?.nodes.map((n) => n.id)
+      this.disassemblyRelevantGraphData?.nodes.map((n) => n.id)
     );
 
     const getNodeThemeInternal = (d: Node) => {
