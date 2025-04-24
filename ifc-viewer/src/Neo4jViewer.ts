@@ -70,7 +70,7 @@ const getNodeTheme = (d: Node) => {
   else if (label === "Archetype") return NODE_THEMES.ARCHETYPE_ELEMENT;
   else if (label === "Layercomposite") return NODE_THEMES.LAYER_COMPOSITE;
   else if (label === "Component") return NODE_THEMES.COMPONENT;
-  else if (label === "Material") return NODE_THEMES.MATERIAL;//{
+  else if (label === "Material") return NODE_THEMES.MATERIAL; //{
   //   return {
   //     background: BLUE_LIGHTER,
   //     text: GREY_MEDIUM,
@@ -152,6 +152,11 @@ export class Neo4jViewer {
     return typeof node === "string" ? node : node.id;
   }
 
+  private getNode(node: string | { id: string }) {
+    const id = this.getNodeId(node);
+    return this.currGraphData?.nodes.find((node) => node.id === id);
+  }
+
   private async fetchGraphData(selectedNodeGuid: string | null = null) {
     try {
       const url = selectedNodeGuid
@@ -194,53 +199,59 @@ export class Neo4jViewer {
       }
     }
 
+    const ALLOWED_LABELS_DISASSEMBLY = ["Layercomposite", "Archetype"];
+
+    const isAllowedDisassemblyLabel = (node) =>
+      ALLOWED_LABELS_DISASSEMBLY.includes(node.labels[0]);
+
+    const isAllowedIfcLabel = (node) => node.labels[0].startsWith("Ifc");
+
     let expanded = true;
+
+    const addRelevantLinksForNode = (node) => {
+      for (const link of allValidLinks) {
+        const source = this.getNode(link.source);
+        const target = this.getNode(link.target);
+
+        if (
+          !isAllowedDisassemblyLabel(source) ||
+          !isAllowedDisassemblyLabel(target)
+        ) {
+          continue;
+        }
+
+        const connected =
+          (source.id === node.id && target.id !== this.selectedNode.id) ||
+          (target.id === node.id && source.id !== this.selectedNode.id);
+
+        if (connected) {
+          relevantLinks.add(link);
+        }
+      }
+    };
+
     while (expanded) {
       expanded = false;
 
       for (const link of allValidLinks) {
-        const sourceId = this.getNodeId(link.source);
-        const targetId = this.getNodeId(link.target);
+        const sourceNode = this.getNode(link.source);
+        const targetNode = this.getNode(link.target);
 
-        if (
-          sourceId !== this.selectedNode.id &&
-          relevantNodeIds.has(sourceId) &&
-          !relevantNodeIds.has(targetId)
-        ) {
-          relevantNodeIds.add(targetId);
-          expanded = true;
-
-          for (const l of allValidLinks) {
-            const lSource = this.getNodeId(l.source);
-            const lTarget = this.getNodeId(l.target);
-
-            if (
-              (lSource === targetId && lTarget !== this.selectedNode.id) ||
-              (lTarget === targetId && lSource !== this.selectedNode.id)
-            ) {
-              relevantLinks.add(l);
-            }
+        const expand = (fromNode, toNode) => {
+          if (
+            fromNode.id !== this.selectedNode.id &&
+            relevantNodeIds.has(fromNode.id) &&
+            !relevantNodeIds.has(toNode.id) &&
+            isAllowedDisassemblyLabel(toNode)
+          ) {
+            relevantNodeIds.add(toNode.id);
+            expanded = true;
+            addRelevantLinksForNode(toNode);
           }
-        } else if (
-          targetId !== this.selectedNode.id &&
-          relevantNodeIds.has(targetId) &&
-          !relevantNodeIds.has(sourceId)
-        ) {
-          relevantNodeIds.add(sourceId);
-          expanded = true;
+        };
 
-          for (const l of allValidLinks) {
-            const lSource = this.getNodeId(l.source);
-            const lTarget = this.getNodeId(l.target);
-
-            if (
-              (lSource === targetId && lTarget !== this.selectedNode.id) ||
-              (lTarget === targetId && lSource !== this.selectedNode.id)
-            ) {
-              relevantLinks.add(l);
-            }
-          }
-        }
+        expand(sourceNode, targetNode);
+        expand(targetNode, sourceNode);
       }
     }
 
@@ -262,9 +273,14 @@ export class Neo4jViewer {
     );
 
     const ifcRelevantNodes = this.currGraphData.nodes.filter(
-      (node) => !disassemblyNodeIds.has(node.id)
+      (node) => !disassemblyNodeIds.has(node.id) && isAllowedIfcLabel(node)
     );
-    ifcRelevantNodes.push(this.selectedNode);
+
+    if (!ifcRelevantNodes.find((n) => n.id === this.selectedNode.id)) {
+      if (isAllowedIfcLabel(this.selectedNode)) {
+        ifcRelevantNodes.push(this.selectedNode);
+      }
+    }
 
     const disassemblyLinkKeys = new Set(
       this.disassemblyRelevantGraphData.links.map(
@@ -277,23 +293,15 @@ export class Neo4jViewer {
       const linkKey = `${this.getNodeId(link.source)}-${this.getNodeId(
         link.target
       )}`;
-      return !disassemblyLinkKeys.has(linkKey);
-    });
+      const sourceNode = this.getNode(link.source);
+      const targetNode = this.getNode(link.target);
 
-    console.log(
-      "IFC Nodes",
-      ifcRelevantNodes.map((n) => n.id)
-    );
-    console.log(
-      "Disassembly Nodes",
-      this.disassemblyRelevantGraphData.nodes.map((n) => n.id)
-    );
-    console.log(
-      "Overlap",
-      ifcRelevantNodes.filter((n) =>
-        this.disassemblyRelevantGraphData.nodes.includes(n)
-      )
-    );
+      return (
+        !disassemblyLinkKeys.has(linkKey) &&
+        isAllowedIfcLabel(sourceNode) &&
+        isAllowedIfcLabel(targetNode)
+      );
+    });
 
     this.ifcRelevantGraphData = {
       nodes: ifcRelevantNodes,
@@ -313,10 +321,6 @@ export class Neo4jViewer {
           `${this.getNodeId(link.source)}-${this.getNodeId(link.target)}`
       )
     );
-
-    console.log("toggleOnlyDisassemblyGraphFilter", relevantNodeIds);
-    console.log("toggleOnlyDisassemblyGraphFilter", relevantLinks);
-    console.log("shouldApply", shouldApply);
 
     d3.select(this.svgElement)
       .selectAll<SVGGElement, Node>("g.node-group > g.node")
@@ -350,10 +354,6 @@ export class Neo4jViewer {
           `${this.getNodeId(link.source)}-${this.getNodeId(link.target)}`
       )
     );
-
-    console.log("toggleOnlyIFCGraphFilter", relevantNodeIds);
-    console.log("toggleOnlyIFCGraphFilter", relevantLinks);
-    console.log("shouldApply", shouldApply);
 
     d3.select(this.svgElement)
       .selectAll<SVGGElement, Node>("g.node-group > g.node")
