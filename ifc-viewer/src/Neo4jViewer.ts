@@ -22,32 +22,37 @@ const NODE_THEMES = {
   IFC_MATERIAL: {
     background: GREY_LIGHT,
     text: GREY_MEDIUM,
-    title: "Ifc Material",
+    title: "IfcMaterial",
   },
   IFC_ELEMENT: {
     background: GREY_DARK,
     text: GREY_MEDIUM,
-    title: "Ifc Element",
+    title: "IfcElement",
   },
   SELECTED_IFC_ELEMENT: {
     background: ORANGE,
     text: GREY_MEDIUM,
-    title: "Selected Ifc Element",
+    title: "Selected IfcElement",
   },
   ARCHETYPE_ELEMENT: {
     background: BLUE_DARK,
     text: WHITE,
-    title: "Archetype",
+    title: "Element archetype",
   },
   LAYER_COMPOSITE: {
     background: BLUE_MEDIUM,
     text: GREY_MEDIUM,
-    title: "Layer Composite",
+    title: "Element's layer composite",
   },
   COMPONENT: {
     background: BLUE_LIGHT,
     text: GREY_MEDIUM,
     title: "Component",
+  },
+  MATERIAL: {
+    background: BLUE_LIGHTER,
+    text: GREY_MEDIUM,
+    title: "Material",
   },
 };
 
@@ -65,12 +70,12 @@ const getNodeTheme = (d: Node) => {
   else if (label === "Archetype") return NODE_THEMES.ARCHETYPE_ELEMENT;
   else if (label === "Layercomposite") return NODE_THEMES.LAYER_COMPOSITE;
   else if (label === "Component") return NODE_THEMES.COMPONENT;
-  else if (label === "Material") {
-    return {
-      background: BLUE_LIGHTER,
-      text: GREY_MEDIUM,
-    };
-  } else
+  else if (label === "Material") return NODE_THEMES.MATERIAL;//{
+  //   return {
+  //     background: BLUE_LIGHTER,
+  //     text: GREY_MEDIUM,
+  //   };}
+  else
     return {
       background: GREY_LIGHT,
       text: GREY_MEDIUM,

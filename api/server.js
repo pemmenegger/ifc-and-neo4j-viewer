@@ -34,21 +34,56 @@ app.get("/api/graph", async (req, res) => {
 
     if (guid) {
       query = `
-        MATCH (start {GUID: $guid})
+        // Start from the IFC element by GUID
+        MATCH (ifcElement)
+        WHERE (ifcElement:IfcRoof OR ifcElement:IfcWall OR ifcElement:IfcSlab OR ifcElement:IfcWindow OR ifcElement:IfcDoor)
+          AND ifcElement.GUID = $guid
 
+        WITH ifcElement
+
+        // Run subquery to collect all paths and return them as n, r, m
         CALL {
-          WITH start
-          MATCH (start)-[:matchedArchetype]-(mNode)
-          WITH COLLECT(DISTINCT mNode) AS matchedNodes
-          UNWIND matchedNodes AS mNode
-          MATCH (mNode)-[*1..2]-(adjacent)
-          RETURN COLLECT(DISTINCT mNode) + COLLECT(DISTINCT adjacent) AS allNodes
+          WITH ifcElement
+
+          MATCH (ifcElement)-[:matchedArchetype]->(a:Archetype)
+          MATCH (a)-[:hasLayer]->(lc:Layercomposite)
+          OPTIONAL MATCH (lc)-[:intracomponentConnection]->(lc2:Layercomposite)
+          OPTIONAL MATCH (lc)-[:hasComponent]->(c:Component)-[:hasMaterial]->(m:Material)
+          OPTIONAL MATCH (ifcElement)-[:hasMaterialLayer]->(im:IfcMaterial)
+          OPTIONAL MATCH (im)-[:connectedIfcMaterial]->(im2:IfcMaterial)
+          OPTIONAL MATCH (ifcElement)-[:connectedElement|elConnected]-(connectedIfc)
+          WHERE (connectedIfc:IfcRoof OR connectedIfc:IfcWall OR connectedIfc:IfcSlab OR connectedIfc:IfcWindow OR connectedIfc:IfcDoor)
+
+          // Collect all involved nodes
+          WITH COLLECT(DISTINCT ifcElement) + COLLECT(DISTINCT a) + COLLECT(DISTINCT lc) +
+               COLLECT(DISTINCT lc2) + COLLECT(DISTINCT c) + COLLECT(DISTINCT m) +
+               COLLECT(DISTINCT im) + COLLECT(DISTINCT im2) + COLLECT(DISTINCT connectedIfc) AS allNodes
+
+          UNWIND allNodes AS n
+          MATCH (n)-[r]->(m)
+          WHERE m IN allNodes
+
+          RETURN n, r, m
         }
 
-        UNWIND allNodes AS n
-        MATCH (n)-[r]->(m)  // Use undirected match to capture both directions
-        WHERE m IN allNodes
         RETURN DISTINCT n, r, m
+
+
+        // MATCH (start {GUID: $guid})
+        //
+        // CALL {
+        //   WITH start
+        //   MATCH (start)-[:matchedArchetype]-(mNode)
+        //   WITH COLLECT(DISTINCT mNode) AS matchedNodes
+        //   UNWIND matchedNodes AS mNode
+        //   MATCH (mNode)-[*1..2]-(adjacent)
+        //   RETURN COLLECT(DISTINCT mNode) + COLLECT(DISTINCT adjacent) AS allNodes
+        // }
+        //
+        // UNWIND allNodes AS n
+        // MATCH (n)-[r]->(m)  // Use undirected match to capture both directions
+        // WHERE m IN allNodes
+        // RETURN DISTINCT n, r, m
       `;
       parameters = { guid };
     } else {
