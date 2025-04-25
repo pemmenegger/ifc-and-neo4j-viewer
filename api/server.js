@@ -48,6 +48,7 @@ app.get("/api/graph", async (req, res) => {
           MATCH (ifcElement)-[:matchedArchetype]->(a:Archetype)
           MATCH (a)-[:hasLayer]->(lc:Layercomposite)
           OPTIONAL MATCH (lc)-[:intracomponentConnection]->(lc2:Layercomposite)
+          OPTIONAL MATCH (lc3)-[:intercomponentConnection]->(lc:Layercomposite)
           OPTIONAL MATCH (lc)-[:hasComponent]->(c:Component)-[:hasMaterial]->(m:Material)
           OPTIONAL MATCH (ifcElement)-[:hasMaterialLayer]->(im:IfcMaterial)
           OPTIONAL MATCH (im)-[:connectedIfcMaterial]->(im2:IfcMaterial)

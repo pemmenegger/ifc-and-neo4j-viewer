@@ -32,7 +32,7 @@ const NODE_THEMES = {
   SELECTED_IFC_ELEMENT: {
     background: ORANGE,
     text: GREY_MEDIUM,
-    title: "Selected IfcElement",
+    title: "Selected Ifc Element",
   },
   ARCHETYPE_ELEMENT: {
     background: BLUE_DARK,
@@ -42,7 +42,7 @@ const NODE_THEMES = {
   LAYER_COMPOSITE: {
     background: BLUE_MEDIUM,
     text: GREY_MEDIUM,
-    title: "Element's layer composite",
+    title: "Layer Composite",
   },
   COMPONENT: {
     background: BLUE_LIGHT,
@@ -74,7 +74,8 @@ const getNodeTheme = (d: Node) => {
   //   return {
   //     background: BLUE_LIGHTER,
   //     text: GREY_MEDIUM,
-  //   };}
+  //   };
+
   else
     return {
       background: GREY_LIGHT,
